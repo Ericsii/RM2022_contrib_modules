@@ -5,10 +5,14 @@
   <version>0.0.1</version>
   <description>Auto aim node for SCURM</description>
   <maintainer email="ericc_feng@qq.com">Eric Feng</maintainer>
+  <maintainer email="2117674050@qq.com">Zhou Bei</maintainer>
   <license>GNU General Public License v3.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
+  <depend>libopencv-dev</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
   <depend>rm_interfaces</depend>
   <depend>rm_cam</depend>
 
