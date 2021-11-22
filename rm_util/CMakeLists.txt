@@ -12,6 +12,8 @@ find_package(sensor_msgs REQUIRED)
 find_package(rm_interfaces REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(eigen3_cmake_module REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 # set dependencies
 set(dependencies
@@ -20,6 +22,7 @@ set(dependencies
   rm_interfaces
   cv_bridge
   OpenCV
+  Eigen3
 )
 
 # include
@@ -47,7 +50,7 @@ install(TARGETS ${PROJECT_NAME}
 
 # Export rmoss_util lib
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
-ament_export_dependencies(${dependencies})
+ament_export_dependencies(${dependencies} eigen3_cmake_module)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
