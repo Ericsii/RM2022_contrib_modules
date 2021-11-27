@@ -14,6 +14,10 @@ namespace rm_auto_aim
     class AutoAimNode
     {   
         public:
+#ifdef DEBUG_MODE
+            double time_sum_ = 0;
+            int fps_ = 0;
+#endif
             AutoAimNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
             rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface()
             {

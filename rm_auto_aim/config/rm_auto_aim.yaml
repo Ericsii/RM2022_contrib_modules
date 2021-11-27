@@ -1,5 +1,6 @@
 auto_aim_node:
     ros__parameters:
-        armor_is_red: true
+        armor_is_red: false
         camera_name: "virtual_camera"
         svm_path: "./contrib_modules/rm_auto_aim/resource/mnist_svm.xml"
+        custom_qos: True

@@ -1,4 +1,4 @@
-//HitArmorData ArmorDetectorSVM::GetTargetArmor(Mat src)
+//HitArmorData ArmorDetectorSVM::GetTargetArmor(cv::Mat src)
 
 #include "rm_auto_aim/armor_detector_svm.hpp"
 
@@ -8,68 +8,54 @@ inline bool CompareLed(Led a,Led b)
 {
     return a.box.center.x<b.box.center.x;
 }
-inline double GetDistance(Point2f a,Point2f b)
+inline double GetDistance(cv::Point2f a,cv::Point2f b)
 {
     return sqrt(pow(a.x - b.x,2) + pow(a.y - b.y,2));
 }
-inline float GetArmorAngle(Point2f p[4])
+inline float GetArmorAngle(cv::Point2f p[4])
 {
      return((atan2(p[0].y - p[1].y,p[1].x - p[0].x)+atan2(p[3].y - p[2].y,p[2].x - p[3].x))/2);
 }
-inline Point2f GetArmorCenter(Point2f p[4])
+inline cv::Point2f GetArmorCenter(cv::Point2f p[4])
 {
-    return Point2f((p[0].x+p[1].x+p[2].x+p[3].x)/4,(p[0].y+p[1].y+p[2].y+p[3].y)/4);
+    return cv::Point2f((p[0].x+p[1].x+p[2].x+p[3].x)/4,(p[0].y+p[1].y+p[2].y+p[3].y)/4);
 }
 inline bool CompareArmor(ArmorData a,ArmorData b)
 {
     return (a.leds_[0].box.size.height+a.leds_[1].box.size.height)>(b.leds_[0].box.size.height+b.leds_[1].box.size.height);
 }
 
-ArmorData ArmorDetectorSVM::GetTargetArmor(Mat& src)
+std::vector<ArmorData> ArmorDetectorSVM::GetArmors(cv::Mat& src)
 {
-    //(void)timestamp_ms;
-    Mat gray;
+    cv::Mat gray;
     PreDeal(src,gray);
+    std::vector<ArmorData> armors;
 
-    ArmorData best_armor_data;                                    //记录识别数据
-
-    if(GetLeds(gray) && GetArmor() && GetBestArmor(src,best_armor_data))
+    if(GetLeds(gray) && GetArmor(src))
     {
         //成功识别到目标
-        lost_number = 0;
-        armor_old_ = best_armor_data;
+        armors = armor_datas_;
         leds_.clear();
         armor_datas_.clear();
     }
     else
     {
-        //未识别到目标
-        if(++lost_number < LOST_MAX)
-        {                   //缓冲
-            best_armor_data = armor_old_;
-            best_armor_data.statu = buffering;
-        }
-        else
-        {                                                                        //掉帧
-            best_armor_data.statu = stop;
-            shoot_armor_number_ = -1;
-            armor_old_.point[0] = Point2f(0,0);
-        }
+        armors = armor_datas_;
         leds_.clear();
         armor_datas_.clear();
     }
-    return best_armor_data;
+    return armors;
 }
 
-void ArmorDetectorSVM::PreDeal(Mat& src, Mat& gray)
+void ArmorDetectorSVM::PreDeal(cv::Mat& src, cv::Mat& gray)
 {
-    Mat bgr[3];
-    Mat img_b, img_g, img_r;
+    cv::Mat bgr[3];
+    cv::Mat img_b, img_g, img_r;
     split(src, bgr);   //将三个通道的像素值分离
     img_b = bgr[0];
     img_g = bgr[1];
     img_r = bgr[2];
-    Mat imgTargetColor, imgBrightness;
+    cv::Mat imgTargetColor, imgBrightness;
     // default taget color is red
     if (armor_is_red_)
     {
@@ -82,53 +68,55 @@ void ArmorDetectorSVM::PreDeal(Mat& src, Mat& gray)
       imgBrightness = img_b;
     }
     //目标颜色区域
-    Mat element = getStructuringElement(MORPH_ELLIPSE, Size(7, 7));
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7));
     dilate(imgTargetColor, imgTargetColor, element);
     threshold(imgTargetColor, imgTargetColor, 72, 255, cv::THRESH_BINARY);
     //亮度区域
-    GaussianBlur(imgBrightness, imgBrightness, Size(3, 3), 1);
+    GaussianBlur(imgBrightness, imgBrightness, cv::Size(3, 3), 1);
     threshold(imgBrightness, imgBrightness, 150, 255, cv::THRESH_BINARY);
     //逻辑与，求交集
     bitwise_and(imgTargetColor, imgBrightness, gray);
 
-    blur(gray,gray,Size(3,3));
+    blur(gray,gray,cv::Size(3,3));
     medianBlur(gray,gray,3);
-
-    //imshow("a",gray);
 }
 
-bool ArmorDetectorSVM::GetLeds(Mat& gray)
+bool ArmorDetectorSVM::GetLeds(cv::Mat& gray)
 {
-    std::vector<std::vector<cv::Point>>gray_contours;                       //存储灰度轮廓，用于处理，获得完整灯条
+    std::vector<std::vector<cv::Point >> gray_contours;                       //存储灰度轮廓，用于处理，获得完整灯条
     cv::findContours(gray,gray_contours,cv::RETR_EXTERNAL,cv::CHAIN_APPROX_NONE);
 
-    for(size_t i = 0;i<gray_contours.size();i++)
+    for(size_t i = 0; i < gray_contours.size(); i++)
     {
-        if(gray_contours[i].size()<5)continue;
-        RotatedRect box = fitEllipse(gray_contours[i]);
+        if(gray_contours[i].size() < 5)continue;
+        cv::RotatedRect box = fitEllipse(gray_contours[i]);
         //根据角度信息筛选
-        if(fabs(box.angle - 90)<45)continue;
+        if(fabs(box.angle - 90) < 45)continue;
         //根据长宽比例筛选
-        if(box.size.height/box.size.width>15||box.size.height/box.size.width<1.3)continue;
+        if(box.size.height/box.size.width > 15 || box.size.height/box.size.width < 1.3)continue;
         Led led_new;
         led_new.box = box;
-        int fuhao = 1;
-        if(box.angle>90)
-            fuhao = -1;
-        led_new.led_top = Point2f(box.center.x + fuhao*box.size.height*sin(box.angle*M_PI/180)/2.0,box.center.y - fuhao*box.size.height*cos(box.angle*M_PI/180)/2.0);
-        led_new.led_bottom = Point2f(box.center.x - fuhao*box.size.height*sin(box.angle*M_PI/180)/2.0,box.center.y + fuhao*box.size.height*cos(box.angle*M_PI/180)/2.0);
+        int flag = 1;
+        if(box.angle > 90)
+            flag = -1;
+        led_new.led_top = cv::Point2f(box.center.x + flag*box.size.height*sin(box.angle*M_PI/180)/2.0,box.center.y - flag*box.size.height*cos(box.angle*M_PI/180)/2.0);
+        led_new.led_bottom = cv::Point2f(box.center.x - flag*box.size.height*sin(box.angle*M_PI/180)/2.0,box.center.y + flag*box.size.height*cos(box.angle*M_PI/180)/2.0);
         leds_.push_back(led_new);
     }
-    if(leds_.size()>=2)
+    if(leds_.size() >= 2)
         return true;
     else
     {
-        cout<<"灯条少于2"<<endl;
+
+#ifdef DEBUG_MODE
+        std::cout << "灯条少于2" << std::endl;
+#endif
+
         return false;
     }
 }
 
-bool ArmorDetectorSVM::GetArmor()
+bool ArmorDetectorSVM::GetArmor(cv::Mat& src)
 {
     //将内部灯条按中心x坐标升序排列
     sort(leds_.begin(),leds_.end(),CompareLed);
@@ -215,149 +203,188 @@ bool ArmorDetectorSVM::GetArmor()
             armor_datas_.push_back(Armor);
         }
     }
-    if(armor_datas_.size()<1)
-    {
-        cout<<"装甲数小于1个"<<endl;
-        return false;
-    }
-    else
-    {
-        return true;
-    }
-}
-
-bool ArmorDetectorSVM::GetBestArmor(Mat& src,ArmorData &best_armor)
-{
-    //判断是否仅识别到一个装甲
-    if(armor_datas_.size() == 1)
-    {
-        if(armor_old_.point[0].x == 0&&armor_old_.point[0].y == 0)
-        {
-            best_armor.statu = first_find;
-        }
-        else if(GetDistance(armor_old_.point[0],armor_datas_[0].point[0])<MIN_DISTANCE)
-        {
-            best_armor.statu = shoot;
-        }
-
-        //进入数字检测
-        float angle = GetArmorAngle(best_armor.point);
-        int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[0].point),(armor_datas_[0].leds_[0].box.size.height+armor_datas_[0].leds_[1].box.size.height)/2,angle);
-        armor_datas_[0].armor_num = ArmorNumber;
-        if(ArmorNumber == -1)
-            return false;
-        if(ArmorNumber == 2)
-        {
-            cout<<"发现工程"<<endl;
-            return false;
-        }
-        else if(ArmorNumber == shoot_armor_number_)
-        {
-            best_armor.statu = shoot;
-        }
-        else
-        {
-            shoot_armor_number_ = ArmorNumber;
-            best_armor.statu = first_find;
-        }
-
-        best_armor = armor_datas_[0];
-        armor_old_ = best_armor;
-        return true;
-    }
-    //第一次识别，前为中断状态
-    if(armor_old_.point[0].x == 0&&armor_old_.point[0].y == 0)
-    {
         //按装甲高度排序
-        sort(armor_datas_.begin(),armor_datas_.end(),CompareArmor);
-        for(size_t i = 0;i<armor_datas_.size();i++)
-        {
-            //进入数字检测
-            float angle = GetArmorAngle(best_armor.point);
-            int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[i].point),(armor_datas_[i].leds_[0].box.size.height+armor_datas_[i].leds_[1].box.size.height)/2,angle);
-            armor_datas_[0].armor_num = ArmorNumber;
-            if(ArmorNumber == -1)
-                continue;
-            if(ArmorNumber == 2)
-            {
-                cout<<"发现工程"<<endl;
-                continue;
-            }
-            //传参
-            best_armor = armor_datas_[i];
-            armor_old_ = best_armor;
-            best_armor.statu = first_find;
-            shoot_armor_number_ = ArmorNumber;
-            return true;
-        }
-        return false;
-    }
-    //之前已存在目标,打分
-    float score_max = SCORE_BEGAIN;            //记录分数极值，SCORE_MIN为标志最小值
-    int Index =  -1;                                               //存储最高分序号
+    sort(armor_datas_.begin(),armor_datas_.end(),CompareArmor);
+
+#ifdef DEBUG_MODE
+    clock_t start,end;
+    start = clock();
+#endif
+
     for(size_t i = 0;i<armor_datas_.size();i++)
     {
-         float score = 100 - (GetDistance(armor_old_.point[0] ,armor_datas_[i].point[0] )/armor_datas_[i].leds_[0].box.size.height)*10;
-        score += 100 - (fabs(armor_old_.leds_[0].box.size.height -armor_datas_[i].leds_[0].box.size.height )/armor_old_.leds_[0].box.size.height)*100;
-        if(score>=score_max)
-        {
-            score_max = score;
-            Index = i;
-        }
-    }
-    if(Index!=-1)
-    {
-        //找到符合标志的目标
-        best_armor.statu = shoot;
-        best_armor = armor_datas_[Index];
-        armor_old_ = best_armor;
+        //进入数字检测
+        float angle = GetArmorAngle(armor_datas_[i].point);
+        int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[i].point),(armor_datas_[i].leds_[0].box.size.height+armor_datas_[i].leds_[1].box.size.height)/2,angle);
+        armor_datas_[i].armor_num = ArmorNumber;
         return true;
+    }
+
+#ifdef DEBUG_MODE
+    end = clock();
+    double endtime=(double)(end-start)/CLOCKS_PER_SEC;
+    std::cout << "SVM cost: " << endtime << std::endl;
+#endif
+
+    if(armor_datas_.size()<1)
+    {
+
+#ifdef DEBUG_MODE
+        std::cout << "装甲数小于1个" << std::endl;
+#endif
+
+        return false;
     }
     else
     {
-        //未找到，按装甲高度排序,发现数字相同则取连续,否则取最大装甲
-        sort(armor_datas_.begin(),armor_datas_.end(),CompareArmor);
-        int max_index = -1;
-        int number = 0;
-        for(size_t i = 0;i<armor_datas_.size();i++)
-        {
-            //进入数字检测
-            float angle = GetArmorAngle(best_armor.point);
-            int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[i].point),(armor_datas_[i].leds_[0].box.size.height+armor_datas_[i].leds_[1].box.size.height)/2,angle);
-            armor_datas_[0].armor_num = ArmorNumber;
-            if(ArmorNumber == -1)
-                continue;
-            if(ArmorNumber == 2)
-            {
-                cout<<"发现工程"<<endl;
-                continue;
-            }
-            if(max_index == -1)
-            {
-                max_index = i;
-                number = ArmorNumber;
-            }
-            if(ArmorNumber == shoot_armor_number_)
-            {
-                best_armor.statu = shoot;
-                best_armor = armor_datas_[Index];
-                armor_old_ = best_armor;
-                return true;
-            }
-        }
-        if(max_index != -1)
-        {
-            best_armor.statu = first_find;
-            best_armor = armor_datas_[Index];
-            armor_old_ = best_armor;
-            shoot_armor_number_ = number;
-            return true;
-        }
-        return false;
+        return true;
     }
 }
 
-int ArmorDetectorSVM::GetNumber(Mat& src,Point2f center,float height,float angle)
+// bool ArmorDetectorSVM::GetBestArmor(cv::Mat& src,ArmorData &best_armor)
+// {
+//     //判断是否仅识别到一个装甲
+//     if(armor_datas_.size() == 1)
+//     {
+//         if(armor_old_.point[0].x == 0&&armor_old_.point[0].y == 0)
+//         {
+//             best_armor.statu = first_find;
+//         }
+//         else if(GetDistance(armor_old_.point[0],armor_datas_[0].point[0])<MIN_DISTANCE)
+//         {
+//             best_armor.statu = shoot;
+//         }
+
+//         //进入数字检测
+//         float angle = GetArmorAngle(best_armor.point);
+//         int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[0].point),(armor_datas_[0].leds_[0].box.size.height+armor_datas_[0].leds_[1].box.size.height)/2,angle);
+//         armor_datas_[0].armor_num = ArmorNumber;
+//         if(ArmorNumber == -1)
+//             return false;
+//         if(ArmorNumber == 2)
+//         {
+
+// #ifdef DEBUG_MODE
+//             cout<<"发现工程"<<endl;
+// #endif
+
+//             return false;
+//         }
+//         else if(ArmorNumber == shoot_armor_number_)
+//         {
+//             best_armor.statu = shoot;
+//         }
+//         else
+//         {
+//             shoot_armor_number_ = ArmorNumber;
+//             best_armor.statu = first_find;
+//         }
+
+//         best_armor = armor_datas_[0];
+//         armor_old_ = best_armor;
+//         return true;
+//     }
+//     //第一次识别，前为中断状态
+//     if(armor_old_.point[0].x == 0&&armor_old_.point[0].y == 0)
+//     {
+//         //按装甲高度排序
+//         sort(armor_datas_.begin(),armor_datas_.end(),CompareArmor);
+//         for(size_t i = 0;i<armor_datas_.size();i++)
+//         {
+//             //进入数字检测
+//             float angle = GetArmorAngle(best_armor.point);
+//             int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[i].point),(armor_datas_[i].leds_[0].box.size.height+armor_datas_[i].leds_[1].box.size.height)/2,angle);
+//             armor_datas_[0].armor_num = ArmorNumber;
+//             if(ArmorNumber == -1)
+//                 continue;
+//             if(ArmorNumber == 2)
+//             {
+
+// #ifdef DEBUG_MODE
+//                 cout<<"发现工程"<<endl;
+// #endif
+
+//                 continue;
+//             }
+//             //传参
+//             best_armor = armor_datas_[i];
+//             armor_old_ = best_armor;
+//             best_armor.statu = first_find;
+//             shoot_armor_number_ = ArmorNumber;
+//             return true;
+//         }
+//         return false;
+//     }
+//     //之前已存在目标,打分
+//     float score_max = SCORE_BEGAIN;            //记录分数极值，SCORE_MIN为标志最小值
+//     int Index =  -1;                                               //存储最高分序号
+//     for(size_t i = 0;i<armor_datas_.size();i++)
+//     {
+//          float score = 100 - (GetDistance(armor_old_.point[0] ,armor_datas_[i].point[0] )/armor_datas_[i].leds_[0].box.size.height)*10;
+//         score += 100 - (fabs(armor_old_.leds_[0].box.size.height -armor_datas_[i].leds_[0].box.size.height )/armor_old_.leds_[0].box.size.height)*100;
+//         if(score>=score_max)
+//         {
+//             score_max = score;
+//             Index = i;
+//         }
+//     }
+//     if(Index!=-1)
+//     {
+//         //找到符合标志的目标
+//         best_armor.statu = shoot;
+//         best_armor = armor_datas_[Index];
+//         armor_old_ = best_armor;
+//         return true;
+//     }
+//     else
+//     {
+//         //未找到，按装甲高度排序,发现数字相同则取连续,否则取最大装甲
+//         sort(armor_datas_.begin(),armor_datas_.end(),CompareArmor);
+//         int max_index = -1;
+//         int number = 0;
+//         for(size_t i = 0;i<armor_datas_.size();i++)
+//         {
+//             //进入数字检测
+//             float angle = GetArmorAngle(best_armor.point);
+//             int ArmorNumber = GetNumber(src,GetArmorCenter(armor_datas_[i].point),(armor_datas_[i].leds_[0].box.size.height+armor_datas_[i].leds_[1].box.size.height)/2,angle);
+//             armor_datas_[0].armor_num = ArmorNumber;
+//             if(ArmorNumber == -1)
+//                 continue;
+//             if(ArmorNumber == 2)
+//             {
+
+// #ifdef DEBUG_MODE
+//                 cout<<"发现工程"<<endl;
+// #endif
+
+//                 continue;
+//             }
+//             if(max_index == -1)
+//             {
+//                 max_index = i;
+//                 number = ArmorNumber;
+//             }
+//             if(ArmorNumber == shoot_armor_number_)
+//             {
+//                 best_armor.statu = shoot;
+//                 best_armor = armor_datas_[Index];
+//                 armor_old_ = best_armor;
+//                 return true;
+//             }
+//         }
+//         if(max_index != -1)
+//         {
+//             best_armor.statu = first_find;
+//             best_armor = armor_datas_[Index];
+//             armor_old_ = best_armor;
+//             shoot_armor_number_ = number;
+//             return true;
+//         }
+//         return false;
+//     }
+// }
+
+int ArmorDetectorSVM::GetNumber(cv::Mat& src,cv::Point2f center,float height,float angle)
 {
 
     float y_top = center.y - height;
@@ -387,8 +414,7 @@ int ArmorDetectorSVM::GetNumber(Mat& src,Point2f center,float height,float angle
         x_right = src.cols;
     }
 
-    Mat armor_roi = src(Rect(x_left,y_top,x_right - x_left,y_bottom - y_top));
-    //imshow("b",armor_roi);
+    cv::Mat armor_roi = src(cv::Rect(x_left,y_top,x_right - x_left,y_bottom - y_top));
 
     cvtColor(armor_roi, armor_roi, cv::COLOR_BGR2GRAY);
     threshold(armor_roi, armor_roi, 300 , 255, cv::THRESH_OTSU);
@@ -398,9 +424,7 @@ int ArmorDetectorSVM::GetNumber(Mat& src,Point2f center,float height,float angle
 	armor_roi.convertTo(armor_roi, CV_32F);
 	//归一化
 	normalize(armor_roi,armor_roi,1,0,cv::NORM_MINMAX);
-
-	//imshow("c",armor_roi);
-	//(1,784)
+    //单通道，一行
 	armor_roi = armor_roi.reshape(1, 1);
 	//预测图片
 	int num = svm_->predict(armor_roi);
