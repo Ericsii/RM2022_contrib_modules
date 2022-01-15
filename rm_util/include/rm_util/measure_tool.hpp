@@ -31,12 +31,12 @@ namespace rm_util
         bool set_camera_info(std::vector<double> camera_intrinsic, std::vector<double> camera_distortion);
 
         /**
-         * @brief 使用pnp求解深度和选转信息
+         * @brief 使用pnp求解深度和旋转信息
          *
          * @param points2d 图像坐标上点集
          * @param points3d 3d坐标上对应点集
          * @param position 返回的3维坐标系中位置
-         * @param rotation 返回相对选转向量
+         * @param rotation 返回相对旋转向量
          * @return true
          * @return false
          */

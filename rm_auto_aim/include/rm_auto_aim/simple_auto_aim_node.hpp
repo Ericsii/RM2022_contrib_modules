@@ -1,5 +1,5 @@
-#ifndef RM_AUTO_AIM__AUTO_AIM_NODE_HPP
-#define RM_AUTO_AIM__AUTO_AIM_NODE_HPP
+#ifndef RM_AUTO_AIM__SIMPLE_AUTO_AIM_NODE_HPP
+#define RM_AUTO_AIM__SIMPLE_AUTO_AIM_NODE_HPP
 
 #include <Eigen/Geometry>
 #include "rclcpp/rclcpp.hpp"
@@ -17,10 +17,10 @@
 
 namespace rm_auto_aim
 {
-    class AutoAimNode
+    class SimpleAutoAimNode
     {
     public:
-        explicit AutoAimNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
+        explicit SimpleAutoAimNode(const rclcpp::NodeOptions &options = rclcpp::NodeOptions());
         rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface()
         {
             return node_->get_node_base_interface();
@@ -54,4 +54,4 @@ namespace rm_auto_aim
     };
 }
 
-#endif // RM_AUTO_AIM__AUTO_AIM_NODE_HPP
+#endif // RM_AUTO_AIM__SIMPLE_AUTO_AIM_NODE_HPP

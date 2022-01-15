@@ -1,4 +1,4 @@
-#include "rm_auto_aim/auto_aim_node.hpp"
+#include "rm_auto_aim/simple_auto_aim_node.hpp"
 
 #include <string>
 #include <sstream>
@@ -9,9 +9,9 @@
 
 namespace rm_auto_aim
 {
-    AutoAimNode::AutoAimNode(const rclcpp::NodeOptions &options)
+    SimpleAutoAimNode::SimpleAutoAimNode(const rclcpp::NodeOptions &options)
     {
-        node_ = std::make_shared<rclcpp::Node>("auto_aim", options);
+        node_ = std::make_shared<rclcpp::Node>("simple_auto_aim", options);
         std::string camera_name = "camera";
         std::string imu_name = "imu";
         std::string robot_color = "red";
@@ -35,10 +35,10 @@ namespace rm_auto_aim
         gimbal_cmd_pub_ = node_->create_publisher<rm_interfaces::msg::GimbalCmd>(
             "/cmd_gimbal", 10);
         set_mode_srv_ = node_->create_service<rm_interfaces::srv::SetMode>(
-            "auto_aim/set_mode", std::bind(&AutoAimNode::set_mode_cb, this, _1, _2));
+            "auto_aim/set_mode", std::bind(&SimpleAutoAimNode::set_mode_cb, this, _1, _2));
 
         wrapper_client_ = std::make_shared<rm_cam::WrapperClient>(
-            node_, camera_name, imu_name, std::bind(&AutoAimNode::process_fn, this, _1, _2, _3));
+            node_, camera_name, imu_name, std::bind(&SimpleAutoAimNode::process_fn, this, _1, _2, _3));
         RCLCPP_INFO(node_->get_logger(), "Create success.");
 
         sensor_msgs::msg::CameraInfo cam_info;
@@ -76,17 +76,18 @@ namespace rm_auto_aim
             "Init finished.");
     }
 
-    void AutoAimNode::process_fn(std_msgs::msg::Header header, cv::Mat &img, geometry_msgs::msg::Pose pose)
+    void SimpleAutoAimNode::process_fn(std_msgs::msg::Header header, cv::Mat &img, geometry_msgs::msg::Pose pose)
     {
         // 计算时间戳
         double time_stamp_ms = header.stamp.sec * 1e3 + header.stamp.nanosec * 1e-6;
 
 #ifdef RM_DEBUG_MODE
         RCLCPP_INFO(
-            node_->get_logger(),
-            "Get message");
-#endif // RM_DEBUG_MODE \
-    // 姿态四元数
+                node_->get_logger(),
+                "Get message"
+            );
+#endif // RM_DEBUG_MODE
+        // 姿态四元数
         curr_pose_ = Eigen::Quaterniond(pose.orientation.w,
                                         pose.orientation.x,
                                         pose.orientation.y,
@@ -114,16 +115,18 @@ namespace rm_auto_aim
             q0 = pose.orientation.x;
             q1 = pose.orientation.y;
             q2 = pose.orientation.z;
-            c_yaw = atan2(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.3;
-            c_pitch = -asin(2.0f * (q1 * q3 - q0 * q2)) * 57.3;
-
+            c_yaw = atan2(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3)* 57.3;
+            c_pitch = -asin(2.0f * (q1 * q3 - q0 * q2))* 57.3;
+      
             RCLCPP_INFO(
                 node_->get_logger(),
-                "c_pitch: %f, c_yaw: %f", c_pitch, c_yaw);
+                "c_pitch: %f, c_yaw: %f",c_pitch,c_yaw
+            );
             RCLCPP_INFO(
                 node_->get_logger(),
-                "offset_pitch: %f, offset_yaw: %f", pitch, yaw);
-#endif
+                "offset_pitch: %f, offset_yaw: %f",pitch,yaw
+            );
+#endif    
             if (this->gimbal_ctrl_flag_)
             {
                 rm_interfaces::msg::GimbalCmd gimbal_cmd;
@@ -138,17 +141,17 @@ namespace rm_auto_aim
             {
             }
         }
-        else
-        {
+        else{
 #ifdef RM_DEBUG_MODE
             RCLCPP_INFO(
                 node_->get_logger(),
-                "No armors");
+                "No armors"
+            );
 #endif
         }
     }
 
-    bool AutoAimNode::set_mode_cb(
+    bool SimpleAutoAimNode::set_mode_cb(
         const std::shared_ptr<rm_interfaces::srv::SetMode::Request> request,
         std::shared_ptr<rm_interfaces::srv::SetMode::Response> response)
     {
@@ -190,9 +193,10 @@ namespace rm_auto_aim
     }
 } // namespace rm_auto_aim
 
+
 #include "rclcpp_components/register_node_macro.hpp"
 
 // Register the component with class_loader.
 // This acts as a sort of entry point, allowing the component to be discoverable when its library
 // is being loaded into a running process.
-RCLCPP_COMPONENTS_REGISTER_NODE(rm_auto_aim::AutoAimNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(rm_auto_aim::SimpleAutoAimNode)

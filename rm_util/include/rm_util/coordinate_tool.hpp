@@ -9,8 +9,7 @@ namespace rm_util
     // 坐标转换类
     class CoordinateTranslation
     {
-        CoordinateTranslation() = delete;
-
+    public:
         /**
          * @brief 使用四元数进行3维坐标变换
          * 
