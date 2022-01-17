@@ -5,20 +5,21 @@ namespace rm_util
     float calc_inclination_angle(cv::Point2f point1, cv::Point2f point2)
     {
         float angle;
-        if (point1.x == point2.x)
-        {
-            return CV_PI / 2;
-        }
-        else
-        {
-            double k;
-            k = -(point1.y - point2.y) / (point1.x - point2.x); // 符号取反，图像坐标系和实际坐标系不统一
-            angle = static_cast<float>(atan(k));
-        }
-        if (angle < 0)
-        {
-            angle = angle + CV_PI;
-        }
+        // if (point1.x == point2.x)
+        // {
+        //     return CV_PI / 2;
+        // }
+        // else
+        // {
+        //     double k;
+        //     k = -(point1.y - point2.y) / (point1.x - point2.x); // 符号取反，图像坐标系和实际坐标系不统一
+        //     angle = static_cast<float>(atan(k));
+        // }
+        // if (angle < 0)
+        // {
+        //     angle = angle + CV_PI;
+        // }
+        angle = cv::fastAtan2(point2.y - point1.y, point2.x - point1.x);
         return angle;
     }
 
