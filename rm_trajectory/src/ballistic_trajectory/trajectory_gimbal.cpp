@@ -3,7 +3,7 @@
 namespace rm_trajectory
 {
 
-bool GimbalTransformTool::solve(double x, double y, double z, double & pitch, double & yaw)
+bool TrajectoryGimbal::solve(double x, double y, double z, double & pitch, double & yaw)
 {
   if (!solver_) {
     pitch = -atan2(z, x);

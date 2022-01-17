@@ -10,6 +10,8 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "rm_auto_aim/armor_detector_interface.hpp"
+#include "rm_trajectory/trajectory_pitch.hpp"
+#include "rm_filters/ekf_filter.hpp"
 #include "rm_util/rm_util.hpp"
 
 namespace rm_auto_aim
@@ -29,6 +31,7 @@ namespace rm_auto_aim
         ArmorTarget getTarget();
 
         void setTrack(bool is_track);
+        void is_same_armor(const Eigen::Vector3d old_position3d, const Eigen::Vector3d now_position3d, const double distance_threshold);
 
     private:
         rclcpp::Node::SharedPtr node_;                                  // rclcpp 节点
@@ -39,6 +42,9 @@ namespace rm_auto_aim
         std::vector<cv::Point3f> mBigArmorPoints;   // 大装甲三维点
         ArmorTarget mTarget;                        // 最终目标
         bool mIsTrack;
+        double last_yaw = 0;
+        rm_filters::Filters *ekf_filter;
+        Eigen::MatrixXd z_k;
     };
 } // namespace rm_auto_aim
 

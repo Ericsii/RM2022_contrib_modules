@@ -93,12 +93,14 @@ namespace rm_auto_aim
                                         pose.orientation.z);
 
         int ret = auto_aim_algo_->process(time_stamp_ms, img, curr_pose_);
+        
         if (!ret)
         {
             auto target = auto_aim_algo_->getTarget();
 
             float pitch, yaw;
             measure_tool_->calc_view_angle(target.armorDescriptor.centerPoint, pitch, yaw);
+            
             pitch = rm_util::rad_to_deg(pitch);
             yaw = rm_util::rad_to_deg(yaw);
 

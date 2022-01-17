@@ -40,7 +40,7 @@ namespace rm_auto_aim
     typedef struct _ArmorTarget
     {
         ArmorDescriptor armorDescriptor;
-        cv::Point3f postion;
+        cv::Point3f postion; 
         cv::Mat rotation;
         bool isBigArmor = false;
         float distance = 0;    // 单位cm

@@ -7,7 +7,7 @@ namespace rm_filters
     const double pi = M_PI; 
     const double DEC = pi / 180;
 
-	class MState : public Filters
+	class MState 
 	{
 	public:
 		/**

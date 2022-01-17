@@ -1,5 +1,6 @@
 #ifndef RM_TRAJECTORY_INTERFACE_HPP_
 #define RM_TRAJECTORY_INTERFACE_HPP_
+#include<string>
 namespace rm_trajectory
 {
 

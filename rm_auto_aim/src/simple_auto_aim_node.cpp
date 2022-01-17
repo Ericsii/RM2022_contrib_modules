@@ -97,7 +97,6 @@ namespace rm_auto_aim
         if (!ret)
         {
             auto target = auto_aim_algo_->getTarget();
-
             float pitch, yaw;
             measure_tool_->calc_view_angle(target.armorDescriptor.centerPoint, pitch, yaw);
             pitch = rm_util::rad_to_deg(pitch);
@@ -110,7 +109,7 @@ namespace rm_auto_aim
 
 #ifdef RM_DEBUG_MODE
             double q1, q2, q3, q0;
-            float c_pitch, c_yaw;
+            // float c_pitch, c_yaw;
             q3 = pose.orientation.w;
             q0 = pose.orientation.x;
             q1 = pose.orientation.y;

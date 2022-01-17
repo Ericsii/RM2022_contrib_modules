@@ -1,15 +1,12 @@
 #ifndef RM_TRAJECTORY_PITCH_HPP_
 #define RM_TRAJECTORY_PITCH_HPP_
 
-#include "rm_trajectory/trajectory_interface.hpp"
-
 namespace rm_trajectory
 {
 
-class GetPitch : public TrajectoryInterface {
+class GetPitch {
 public:
-    explicit GetPitch(double initial_vel)
-    : initial_vel_(initial_vel) {}
+    explicit GetPitch(double initial_vel);
 
     double get_pitch(double target_distance, double target_h, double bullet_v);
 

@@ -14,6 +14,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rm_interfaces REQUIRED)
 find_package(rm_cam REQUIRED)
 find_package(rm_util REQUIRED)
+find_package(rm_filters REQUIRED)
+find_package(rm_trajectory REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -34,6 +36,8 @@ set(dependencies
   rm_interfaces
   rm_cam
   rm_util
+  rm_filters
+  rm_trajectory
   rclcpp
   rclcpp_components
   Eigen3

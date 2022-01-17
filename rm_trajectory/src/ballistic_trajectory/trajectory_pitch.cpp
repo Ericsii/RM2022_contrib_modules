@@ -4,6 +4,8 @@
 
 namespace rm_trajectory
 {
+    GetPitch::GetPitch(double initial_vel)
+    : initial_vel_(initial_vel) {}
 
     double GetPitch::pitch_1(double target_h) {
         double pitch = 0.05985 * target_h + 2.794;

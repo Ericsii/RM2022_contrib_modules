@@ -13,16 +13,20 @@ namespace rm_filters
 	{
 		double delta_t = t;
 		Eigen::MatrixXd A(Matrix_x, Matrix_x);
-		A(0, 0) = 1, A(0, 1) = 0, A(0, 2) = delta_t, A(0, 3) = 0;
-		A(1, 0) = 0, A(1, 1) = 1, A(1, 2) = 0, A(1, 3) = delta_t;
-		A(2, 0) = 0, A(2, 1) = 0, A(2, 2) = 1, A(2, 3) = 0;
-		A(3, 0) = 0, A(3, 1) = 0, A(3, 2) = 0, A(3, 3) = 1;
+		A(0, 0) = 1, A(0, 1) = 0, A(0, 2) = 0, A(0, 3) = delta_t, A(0, 4) = 0, A(0, 5) = 0;
+		A(1, 0) = 0, A(1, 1) = 1, A(1, 2) = 0, A(1, 3) = 0, A(1, 4) = delta_t, A(1, 5) = 0;
+		A(2, 0) = 0, A(2, 1) = 0, A(2, 2) = 1, A(2, 3) = 0, A(2, 4) = 0, A(2, 5) = delta_t;
+		A(3, 0) = 0, A(3, 1) = 0, A(3, 2) = 0, A(3, 3) = 1, A(3, 4) = 0, A(3, 5) = 0;
+		A(4, 0) = 0, A(4, 1) = 0, A(4, 2) = 0, A(4, 3) = 0, A(4, 4) = 1, A(4, 5) = 0;
+		A(5, 0) = 0, A(5, 1) = 0, A(5, 2) = 0, A(5, 3) = 0, A(5, 4) = 0, A(5, 5) = 1;
 
-		Eigen::MatrixXd B(Matrix_x, Matrix_y);
+		Eigen::MatrixXd B(Matrix_x, 1);
 		B(0, 0) = pow(delta_t, 2) / 2;
 		B(1, 0) = pow(delta_t, 2) / 2;
-		B(2, 0) = delta_t;
+		B(2, 0) = pow(delta_t, 2) / 2;
 		B(3, 0) = delta_t;
+		B(4, 0) = delta_t;
+		B(5, 0) = delta_t;
 
 		Eigen::MatrixXd x_p = A * x_l_k + U * B;
 		return x_p;
@@ -39,10 +43,12 @@ namespace rm_filters
 	{
         double delta_t = t;
 		Eigen::MatrixXd Matrix(Matrix_x, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = delta_t, Matrix(0, 3) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = delta_t;
-		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0;
-		Matrix(3, 0) = 0, Matrix(3, 1) = 0, Matrix(3, 2) = 0, Matrix(3, 3) = 1;
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = delta_t, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = delta_t, Matrix(1, 5) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = delta_t;
+		Matrix(3, 0) = 0, Matrix(3, 1) = 0, Matrix(3, 2) = 0, Matrix(3, 3) = 1, Matrix(3, 4) = 0, Matrix(3, 5) = 0;
+		Matrix(4, 0) = 0, Matrix(4, 1) = 0, Matrix(4, 2) = 0, Matrix(4, 3) = 0, Matrix(4, 4) = 1, Matrix(4, 5) = 0;
+		Matrix(5, 0) = 0, Matrix(5, 1) = 0, Matrix(5, 2) = 0, Matrix(5, 3) = 0, Matrix(5, 4) = 0, Matrix(5, 5) = 1;
 		return Matrix;
 	}
 
@@ -56,10 +62,12 @@ namespace rm_filters
 	Eigen::MatrixXd MState::se_df_const_acc(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t)
 	{
 		Eigen::MatrixXd Matrix(Matrix_x, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0;
-		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0;
-		Matrix(3, 0) = 0, Matrix(3, 1) = 0, Matrix(3, 2) = 0, Matrix(3, 3) = 1;
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 1, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 1, Matrix(1, 5) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = 1;
+		Matrix(3, 0) = 0, Matrix(3, 1) = 0, Matrix(3, 2) = 0, Matrix(3, 3) = 1, Matrix(3, 4) = 0, Matrix(3, 5) = 0;
+		Matrix(4, 0) = 0, Matrix(4, 1) = 0, Matrix(4, 2) = 0, Matrix(4, 3) = 0, Matrix(4, 4) = 1, Matrix(4, 5) = 0;
+		Matrix(5, 0) = 0, Matrix(5, 1) = 0, Matrix(5, 2) = 0, Matrix(5, 3) = 0, Matrix(5, 4) = 0, Matrix(5, 5) = 1;
 		return Matrix;
 	}
 
@@ -71,9 +79,17 @@ namespace rm_filters
 	*/
 	Eigen::MatrixXd MState::const_acc_sensor(Eigen::MatrixXd &x_p_k)
 	{
-		Eigen::MatrixXd Matrix(Matrix_x / 2, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0;
+<<<<<<< HEAD
+		Eigen::MatrixXd Matrix(Matrix_y, Matrix_x);
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0, Matrix(1, 5) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = 0;
+=======
+		Eigen::MatrixXd Matrix(	Matrix_y, Matrix_x);
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0;
+>>>>>>> 333eff2eded6daf39b9ec8e77dfe49c43c9c1df5
 		Matrix = Matrix * x_p_k;
 		return Matrix;
 	}
@@ -86,9 +102,16 @@ namespace rm_filters
 	*/
 	Eigen::MatrixXd MState::df_const_acc_sensor(Eigen::MatrixXd &x_p_k)
 	{
-		Eigen::MatrixXd Matrix(Matrix_x / 2, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0;
+		Eigen::MatrixXd Matrix(Matrix_y, Matrix_x);
+<<<<<<< HEAD
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0, Matrix(1, 5) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = 0;
+=======
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0;
+>>>>>>> 333eff2eded6daf39b9ec8e77dfe49c43c9c1df5
 		return Matrix;
 	}
 
@@ -100,11 +123,10 @@ namespace rm_filters
 	*/
 	Eigen::MatrixXd MState::se_df_const_acc_sensor(Eigen::MatrixXd &x_p_k)
 	{
-		Eigen::MatrixXd Matrix(Matrix_x / 2, Matrix_x / 2);
-		Matrix(0, 0) = 1;
-		Matrix(0, 1) = 0;
-		Matrix(1, 0) = 0;
-		Matrix(1, 1) = 1;
+		Eigen::MatrixXd Matrix(Matrix_y, Matrix_y);
+		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0;
+		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0;
+		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1;
 		return Matrix;
 	}
 
