@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 project(rm_trajectory)
 
-#set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wall -Wextra -Wpedantic)
+endif()
 
 # include
 include_directories(include)
@@ -41,11 +43,6 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
-)
-
-#install launch res directories
-install(DIRECTORY launch resource config
-  DESTINATION share/${PROJECT_NAME}
 )
 
 #export rmoss_projectile_motion lib

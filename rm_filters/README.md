@@ -12,8 +12,8 @@ rm_filters 卡尔曼滤波模块。
 
 | 运动模型 |                状态量                | $Matrixx$ | $Matrixy$ |
 | :------: | :----------------------------------: | :-------: | :-------: |
-|   CTRV   | $x_k=[p_x, p_y, v, \theta, d\theta]$ |     5     |     3     |
-|    CA    |   $x_k=[p_x, p_y, p_z, v_x, v_y]$    |     5     |     3     |
+|   CTRV   | $x_k=[p_x, p_y, v, \theta, d\theta]$ |     5     |     2     |
+|    CA    |      $x_k=[p_x, p_y, v_x, v_y]$      |     4     |     1     |
 
 ## 矩阵
 
@@ -31,7 +31,7 @@ rm_filters 卡尔曼滤波模块。
 |   $Q$    |    系统协方差矩阵    | $Matrixx\times Matrixx$ |
 |   $P$    |     估计的协方差     | $Matrixx\times Matrixx$ |
 |   $R$    |    测量噪声协方差    | $Matrixy\times Matrixy$ |
-|   $U$    |      加速度矩阵      | $Matrixx\times Matrixx$ |
+|   $U$    |      加速度矩阵      |    $Matrixy\times1$     |
 |  $z_k$   |       观测矩阵       |    $Matrixy\times1$     |
 
 - EKF计算额外用矩阵
@@ -86,7 +86,6 @@ Filters *ekf_filter = new ExKalman(x_p_k, x_l_k, Q, P, R,
 						MState::const_acc, MState::df_const_acc, MState::se_df_const_acc,
 						MState::const_acc_sensor, MState::df_const_acc_sensor,
 						MState::se_df_const_acc_sensor);
-
 ekf_filter->predict(U, t);//t要参考帧率
 ekf_filter->update(z_k);
 ```
@@ -124,3 +123,6 @@ ekf_filter->update(z_k);
 | ---- | ------------- | ------------- | ------------- | ------------- |
 | CTRV | 103.9549      | 71.99         | 100.3734      | 100.0412      |
 | CA   | 103.9549      | 76.2265       | 100.3734      | 79.3148       |
+
+### （未解决）关于CTRV角速度的获取\更新
+

@@ -79,17 +79,10 @@ namespace rm_filters
 	*/
 	Eigen::MatrixXd MState::const_acc_sensor(Eigen::MatrixXd &x_p_k)
 	{
-<<<<<<< HEAD
 		Eigen::MatrixXd Matrix(Matrix_y, Matrix_x);
 		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
 		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0, Matrix(1, 5) = 0;
 		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = 0;
-=======
-		Eigen::MatrixXd Matrix(	Matrix_y, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0;
-		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0;
->>>>>>> 333eff2eded6daf39b9ec8e77dfe49c43c9c1df5
 		Matrix = Matrix * x_p_k;
 		return Matrix;
 	}
@@ -103,15 +96,9 @@ namespace rm_filters
 	Eigen::MatrixXd MState::df_const_acc_sensor(Eigen::MatrixXd &x_p_k)
 	{
 		Eigen::MatrixXd Matrix(Matrix_y, Matrix_x);
-<<<<<<< HEAD
 		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
 		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0, Matrix(1, 5) = 0;
 		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = 0;
-=======
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = 0, Matrix(0, 4) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = 0;
-		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0;
->>>>>>> 333eff2eded6daf39b9ec8e77dfe49c43c9c1df5
 		return Matrix;
 	}
 
