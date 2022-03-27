@@ -1,4 +1,4 @@
-#include "rm_auto_aim/armor_detector_svm.hpp"
+#include "rm_auto_aim/detector/armor_detector_svm.hpp"
 
 #include <sstream>
 
@@ -10,6 +10,7 @@ ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
                                    bool armor_is_red,
                                    const std::string &xml_path) : ArmorDetector(node, armor_is_red)
 {
+    node_->declare_parameter("xml_path", "");
     std::string config_path = xml_path;
     if (config_path == "")
     {
@@ -25,12 +26,29 @@ ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
         "Loading SVM model from: %s", config_path.c_str());
     svm_ = cv::ml::SVM::load(config_path);
 
+    //HOG_SVM数字识别参数设置
+    std::map<int, int> m_label2id;
+    m_label2id = {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 11}, {7, 7}, {8, 8}};
+    m_hog.winSize = cv::Size(48, 32);
+    m_hog.blockSize = cv::Size(16, 16);
+    m_hog.blockStride = cv::Size(8, 8);
+    m_hog.cellSize = cv::Size(8, 8);
+    m_hog.nbins = 9;
+    m_hog.derivAperture = 1;
+    m_hog.winSigma = -1;
+    m_hog.histogramNormType = cv::HOGDescriptor::L2Hys;
+    m_hog.L2HysThreshold = 0.2;
+    m_hog.gammaCorrection = false;
+    m_hog.free_coef = -1.f;
+    m_hog.nlevels = cv::HOGDescriptor::DEFAULT_NLEVELS;
+    m_hog.signedGradient = false;
+
     // 构造投影目标点
-    float offset_x = 6, offset_y = 6;
+    float offset_x = 3, offset_y = 3;
     perspective_targets_[0] = cv::Point2f(offset_x, offset_y);
-    perspective_targets_[1] = cv::Point2f(offset_x, 28 - offset_y);
-    perspective_targets_[2] = cv::Point2f(28 - offset_x, 28 - offset_y);
-    perspective_targets_[3] = cv::Point2f(28 - offset_x, offset_y);
+    perspective_targets_[1] = cv::Point2f(offset_x, 32 - offset_y);
+    perspective_targets_[2] = cv::Point2f(32 - offset_x, 32 - offset_y);
+    perspective_targets_[3] = cv::Point2f(32 - offset_x, offset_y);
 
     std::string str;
     std::stringstream ss;
@@ -118,7 +136,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
 {
     light.lightArea = r.size.area();
-    if (light.lightArea < 10 || light.lightArea > 3000)
+    if (light.lightArea < 100 || light.lightArea > 2000)
     {
         return 1; // 灯条区域大小不满足
     }
@@ -173,7 +191,6 @@ int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &lig
     }
 
     light.lightAngle = rm_util::calc_inclination_angle(light.led_top, light.led_bottom);
-    light.lightAngle = rm_util::rad_to_deg(light.lightAngle);
 
     if (abs(light.lightAngle - 90) > 45)
     {
@@ -197,27 +214,32 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
         armor.lightR = &l2;
         armor.lightL = &l1;
     }
-    armor.parallelErr = abs(armor.lightL->lightAngle - armor.lightR->lightAngle);
+    armor.parallelErr = fabs(armor.lightL->lightAngle - armor.lightR->lightAngle);
     armor.armorWidth = cv::norm(armor.lightL->led_center - armor.lightR->led_center);
     armor.armorHeight = armor.lightL->lightHeight > armor.lightR->lightHeight ? armor.lightL->lightHeight : armor.lightR->lightHeight; //取两灯条最大值
     armor.armorRatioWH = armor.armorWidth / armor.armorHeight;
+    // 条件0 两边灯条大小比较
+    if (fabs(l1.lightArea - l2.lightArea) > 800)
+    {
+        return -1; // 两边灯条大小不匹配
+    }
     //条件1
     if (armor.armorHeight < 60)
     {
-        if (armor.parallelErr > 4)
+        if (armor.parallelErr > 5)
         {
             return 1; //平行太大误差，否定
         }
     }
     else
     {
-        if (armor.parallelErr > armor.armorHeight / 15)
+        if (armor.parallelErr > armor.armorHeight / 30)
         {
             return 1; //平行太大误差，否定
         }
     }
     //条件2
-    if (armor.armorRatioWH < 1 || armor.armorRatioWH > 5)
+    if (armor.armorRatioWH < 1 || armor.armorRatioWH > (22.5/6))
     {
         return 2; //宽高比不符合，否定
     }
@@ -237,16 +259,17 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
     }
     armor.innerAngleErr = abs(rm_util::rad_to_deg(innerAngle) - 90);
     //条件3
-    if (armor.innerAngleErr > 20)
+    if (armor.innerAngleErr > 30)
     {
         return 3; //装甲板正度（矩形内角=90）不符合，否定
     }
     armor.horizonLineAngle = rm_util::calc_inclination_angle(
         armor.lightL->led_center,
         armor.lightR->led_center);
-    armor.horizonLineAngle = rm_util::rad_to_deg(armor.horizonLineAngle);
+    if (armor.horizonLineAngle > 180) 
+        armor.horizonLineAngle = armor.horizonLineAngle - 360;
     //条件4
-    if (abs(armor.horizonLineAngle - 90) < 60)
+    if (abs(armor.horizonLineAngle) > 30)
     {
         return 4; //装甲板倾斜不符合，否定
     }
@@ -261,6 +284,7 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
     }
     //计算中心点
     armor.centerPoint = (armor.lightR->led_center + armor.lightL->led_center) / 2;
+
     //装甲板四个点
     armor.points[0] = armor.lightL->led_top;
     armor.points[1] = armor.lightL->led_bottom;
@@ -278,6 +302,8 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     hierarchy_.clear();
 #ifdef RM_DEBUG_MODE
     cv::waitKey(1);
+#else
+    cv::waitKey(1);
 #endif
 
     preImg(src, binImg_);
@@ -292,7 +318,7 @@ int ArmorDetectorSVM::process(cv::Mat &src)
 #ifdef RM_DEBUG_MODE
     RCLCPP_INFO(
         node_->get_logger(),
-        "contour size: %d", contours_.size());
+        "contour size: %lu", contours_.size());
 #endif
 
     for (const auto &contour : contours_)
@@ -317,7 +343,7 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     }
     RCLCPP_INFO(
         node_->get_logger(),
-        "light size: %d", lights_.size());
+        "light size: %lu", lights_.size());
 #endif
 
     // 匹配灯条
@@ -346,7 +372,7 @@ int ArmorDetectorSVM::process(cv::Mat &src)
 #ifdef RM_DEBUG_MODE
     RCLCPP_INFO(
         node_->get_logger(),
-        "armor size: %d", armors_.size());
+        "armor size: %lu", armors_.size());
 #endif
 
     if (armors_.size() < 1)
@@ -361,7 +387,7 @@ int ArmorDetectorSVM::process(cv::Mat &src)
                     std::to_string(armor.label),
                     armor.points[0],
                     cv::FONT_HERSHEY_SIMPLEX, 1,
-                    target_color_red_ ? rm_util::red : rm_util::blue);
+                    target_color_red_ ? rm_util::red : rm_util::blue, 5);
     }
     cv::imshow("result", debugImg);
 #endif
@@ -379,13 +405,25 @@ void ArmorDetectorSVM::lightHeightLong(LightDescriptor *light, float height)
 
 int ArmorDetectorSVM::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
 {
-    auto t_M = cv::getPerspectiveTransform(armor.points, perspective_targets_); // 计算投影矩阵
-    cv::warpPerspective(src, transformImg_, t_M, cv::Size(28, 28));             // 投影变换
+    // 调整数字识别区域
+    cv::Point2f dVecnx(10,0),dVecny(0,5);
+    ArmorDescriptor armor_num(armor);
+    //装甲板四个点
+    armor_num.points[0] = armor.lightL->led_top + dVecnx - dVecny;
+    armor_num.points[1] = armor.lightL->led_bottom + dVecnx + dVecny;
+    armor_num.points[2] = armor.lightR->led_bottom - dVecnx + dVecny;
+    armor_num.points[3] = armor.lightR->led_top - dVecnx - dVecny;
+    auto t_M = cv::getPerspectiveTransform(armor_num.points, perspective_targets_); // 计算投影矩阵
+    cv::warpPerspective(src, transformImg_, t_M, cv::Size(32, 32));             // 投影变换
+#ifdef RM_DEBUG_MODE
+    cv::imshow("armor_num", transformImg_);
+#endif
+    cv::imshow("armor_num", transformImg_);
     cv::cvtColor(transformImg_, transformImg_, cv::COLOR_BGR2GRAY);             // 转换灰度图
-    transformImg_.convertTo(transformImg_, CV_32F);                             // 更换数据类型有uchar->float32
-    transformImg_ = transformImg_ / 255.;                                       // 归一化
-    transformImg_ = transformImg_.reshape(1, 1);                                // 单通道，一行
-    armor.label = svm_->predict(transformImg_);                                 // 预测图片
+    cv::resize(transformImg_,transformImg_,cv::Size(48,32));
+    std::vector<float> descriptors;
+    m_hog.compute(transformImg_, descriptors, cv::Size(8, 8));
+    armor.label = svm_->predict(descriptors);                                 // 预测图片
     if (armor.label >= 0 && armor.label <= 8)
     {
         // 检测成功

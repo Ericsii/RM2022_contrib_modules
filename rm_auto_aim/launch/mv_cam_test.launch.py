@@ -13,26 +13,14 @@ from launch_ros.actions import PushRosNamespace
 
 
 def generate_launch_description():
-    mvcam_path = os.path.join(get_package_share_directory('rm_entity_cam'), 'launch', 'mindvision_cam.launch.launch.py')
+    mvcam_path = os.path.join(get_package_share_directory('rm_entity_cam'), 'launch', 'mindvision_cam.launch.py')
     auto_aim_path = os.path.join(get_package_share_directory('rm_auto_aim'), 'launch', 'auto_aim_node.launch.py')
 
-    virtual_cam_node = IncludeLaunchDescription(PythonLaunchDescriptionSource(mvcam_path))
+    mv_cam_node = IncludeLaunchDescription(PythonLaunchDescriptionSource(mvcam_path))
     auto_aim_node = IncludeLaunchDescription(PythonLaunchDescriptionSource(auto_aim_path))
 
-    launch_include_with_namespace = GroupAction(
-        actions=[
-            # push-ros-namespace to set namespace of included nodes
-            PushRosNamespace("infantry4"),
-            IncludeLaunchDescription(
-                PythonLaunchDescriptionSource(mvcam_path)
-            ),
-        ]
-    )
-
-    ld = LaunchDescription(
-        launch_include_with_namespace
-    )
-    ld.add_action(virtual_cam_node)
+    ld = LaunchDescription()
+    ld.add_action(mv_cam_node)
     ld.add_action(auto_aim_node)
 
     return ld

@@ -14,11 +14,11 @@ from launch_ros.actions import PushRosNamespace
 def generate_launch_description():
 
     param_path = os.path.join(get_package_share_directory("rm_auto_aim"), "config/rm_auto_aim.yaml")
-
+    robot_name = 'infantry4'
     auto_aim_node = Node(
         package="rm_auto_aim",
         executable="auto_aim_node",
-        # namespace = "infantry4",
+        namespace = robot_name,
         name="auto_aim_node",
         parameters=[param_path],
         output='screen'

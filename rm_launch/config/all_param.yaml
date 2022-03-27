@@ -1,0 +1,43 @@
+##若未设置udev权限，则需要进入root用户才能启动相机结点（除虚拟相机外）
+##相机
+mindvision_camera:
+    ros__parameters:
+        camera_name: 'mv_camera'
+        sn: '048021610077'
+        config_path: './contrib_modules/rm_launch/config/048021610074.Config'
+        camera_info_url: 'package://rm_launch/config/048021610074.yaml'
+        fps: 200
+        best_effort_qos: true
+
+daheng_camera:
+    ros__parameters:
+        camera_name: 'daheng_camera'
+        sn: 'KN0210040024'
+        config_path: './master-base/rm_cam/config/daheng_config/KN0210040024.txt'
+        lut_config_path: ''
+        lut_detail: [60., 2., 0.] # (!必须使用小数形式)对比度调节参数[-50-100] 伽马调节参数[0.1-10] 亮度调节参数[-150-150]
+        camera_k: [1552.7, 0.0, 640.0, 0.0, 1537.9, 360.0, 0.0, 0.0, 1.0]
+        camera_d: [0.0, 0.0, 0.0, 0.0, 0.0]
+        fps: 100
+        best_effort_qos: false
+
+##串口
+base:
+    ros__parameters:
+        serial_name: '/dev/ttyACM0'
+        serial_send: True
+        serial_recv: True
+        serial_bps: 1152000
+        debug: True
+        custom_qos: True
+        
+##自瞄
+auto_aim:
+    ros__parameters:
+        armor_is_red: true 
+        camera_name: 'mv_camera'
+        imu_name: 'imu/data_raw'
+        xml_path: './contrib_modules/rm_auto_aim/resource/HOG_SVM.xml'
+        best_effort_qos: true
+        auto_start: true
+

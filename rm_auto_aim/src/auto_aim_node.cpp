@@ -1,39 +1,24 @@
 #include "rm_auto_aim/auto_aim_node.hpp"
 
-#include <string>
-#include <sstream>
-
-#include "sensor_msgs/msg/camera_info.hpp"
-#include "rm_interfaces/msg/gimbal.hpp"
-#include "rm_auto_aim/armor_detector_svm.hpp"
-
 namespace rm_auto_aim
 {
     AutoAimNode::AutoAimNode(const rclcpp::NodeOptions &options)
     {
         node_ = std::make_shared<rclcpp::Node>("auto_aim", options);
-        std::string camera_name = "camera";
-        std::string imu_name = "imu";
-        std::string robot_color = "red";
-        bool auto_start = false;
+        node_->declare_parameter("armor_is_red", false);
+        node_->declare_parameter("camera_name", "mv_camera");
+        node_->declare_parameter("imu_name", "imu");
+        node_->declare_parameter("auto_start", false);
 
-        node_->declare_parameter("robot_color", robot_color);
-        node_->declare_parameter("camera_name", camera_name);
-        node_->declare_parameter("imu_name", imu_name);
-        node_->declare_parameter("auto_start", auto_start);
-        node_->declare_parameter("xml_path", "");
-
-        node_->get_parameter("camera_name", camera_name);
-        node_->get_parameter("imu_name", imu_name);
-        node_->get_parameter("robot_color", robot_color);
-        node_->get_parameter("auto_start", auto_start);
-
-        bool is_red = (robot_color == "red");
+        std::string camera_name = node_->get_parameter("camera_name").as_string();
+        std::string imu_name = node_->get_parameter("imu_name").as_string();
+        bool armor_is_red = node_->get_parameter("armor_is_red").as_bool();
+        bool is_red = armor_is_red;
 
         using namespace std::placeholders;
         RCLCPP_INFO(node_->get_logger(), "Creating rcl pub&sub&client.");
         gimbal_cmd_pub_ = node_->create_publisher<rm_interfaces::msg::GimbalCmd>(
-            "/cmd_gimbal", 10);
+            "cmd_gimbal", 10);
         set_mode_srv_ = node_->create_service<rm_interfaces::srv::SetMode>(
             "auto_aim/set_mode", std::bind(&AutoAimNode::set_mode_cb, this, _1, _2));
 
@@ -66,82 +51,103 @@ namespace rm_auto_aim
         // 初始化
         std::vector<double> camera_k(9, 0);
         std::copy_n(cam_info.k.begin(), 9, camera_k.begin());
-        std::shared_ptr<rm_auto_aim::ArmorDetector> detector = std::make_shared<rm_auto_aim::ArmorDetectorSVM>(node_);
-        auto_aim_algo_ = std::make_shared<rm_auto_aim::SimpleAutoAimAlgo>(node_, camera_k, cam_info.d, detector);
-        auto_aim_algo_->set_target_color(!is_red);
+        std::shared_ptr<rm_auto_aim::ArmorDetector> detector = std::make_shared<rm_auto_aim::ArmorDetectorSVM>(node_,is_red);
+        auto_aim_algo_ = std::make_shared<rm_auto_aim::AutoAimAlgo>(node_, camera_k, cam_info.d, detector);
+        auto_aim_algo_->set_target_color(is_red);
         transform_tool_ = std::make_shared<rm_util::CoordinateTranslation>();
         measure_tool_ = std::make_shared<rm_util::MonoMeasureTool>(camera_k, cam_info.d);
+
+#ifdef RM_DEBUG_MODE
+        bool auto_start = node_->get_parameter("auto_start").as_bool();
+        tf_broadcaster_ = std::make_unique<tf2_ros::TransformBroadcaster>(node_);
+        if(auto_start)
+        {
+            aim_mode = 0x01;
+            wrapper_client_->start();
+        }
+#endif        
         RCLCPP_INFO(
             node_->get_logger(),
             "Init finished.");
     }
 
-    void AutoAimNode::process_fn(std_msgs::msg::Header header, cv::Mat &img, geometry_msgs::msg::Pose pose)
+    void AutoAimNode::process_fn(std_msgs::msg::Header header, cv::Mat &img, geometry_msgs::msg::Quaternion q)
     {
         // 计算时间戳
         double time_stamp_ms = header.stamp.sec * 1e3 + header.stamp.nanosec * 1e-6;
 
 #ifdef RM_DEBUG_MODE
+        // tf2 发布当前姿态
+        geometry_msgs::msg::TransformStamped pose_tf;
+        pose_tf.header.stamp = header.stamp;
+        pose_tf.header.frame_id = "world";
+        pose_tf.child_frame_id = "camera";
+        pose_tf.transform.translation.x = 1.0;
+        pose_tf.transform.translation.y = 0.0;
+        pose_tf.transform.translation.z = 0.0;
+        pose_tf.transform.rotation = q;
+        tf_broadcaster_->sendTransform(pose_tf);
+
         RCLCPP_INFO(
             node_->get_logger(),
             "Get message");
-#endif // RM_DEBUG_MODE \
-    // 姿态四元数
-        curr_pose_ = Eigen::Quaterniond(pose.orientation.w,
-                                        pose.orientation.x,
-                                        pose.orientation.y,
-                                        pose.orientation.z);
+#endif
+        // 姿态四元数
+        curr_pose_ = Eigen::Quaterniond(q.w, q.x, q.y, q.z);
+        // 装甲板识别
+        int ret = auto_aim_algo_->process(time_stamp_ms, img, curr_pose_, aim_mode);
 
-        int ret = auto_aim_algo_->process(time_stamp_ms, img, curr_pose_);
-        
         if (!ret)
         {
-            auto target = auto_aim_algo_->getTarget();
+            float offset_pitch, offset_yaw;
+            offset_pitch = auto_aim_algo_->mTarget_pitch;
+            offset_yaw = auto_aim_algo_->mTarget_yaw;
 
-            float pitch, yaw;
-            measure_tool_->calc_view_angle(target.armorDescriptor.centerPoint, pitch, yaw);
-            
-            pitch = rm_util::rad_to_deg(pitch);
-            yaw = rm_util::rad_to_deg(yaw);
-
+#ifdef RM_DEBUG_MODE
+            /* 仅从图像2D坐标进行目标跟踪
+             auto target = auto_aim_algo_->getTarget();
+             measure_tool_->calc_view_angle(target.armorDescriptor.centerPoint, offset_pitch, offset_yaw);
+             offset_pitch = rm_util::rad_to_deg(auto_aim_algo_->mTarget_pitch);
+             offset_yaw = rm_util::rad_to_deg(auto_aim_algo_->mTarget_yaw); */
             auto euler_angles = rm_util::CoordinateTranslation::quat2euler(curr_pose_);
             float c_pitch, c_yaw;
             c_pitch = rm_util::rad_to_deg(euler_angles(1));
             c_yaw = rm_util::rad_to_deg(euler_angles(0));
-
-#ifdef RM_DEBUG_MODE
-            double q1, q2, q3, q0;
-            float c_pitch, c_yaw;
-            q3 = pose.orientation.w;
-            q0 = pose.orientation.x;
-            q1 = pose.orientation.y;
-            q2 = pose.orientation.z;
-            c_yaw = atan2(2.0f * (q1 * q2 + q0 * q3), q0 * q0 + q1 * q1 - q2 * q2 - q3 * q3) * 57.3;
-            c_pitch = -asin(2.0f * (q1 * q3 - q0 * q2)) * 57.3;
 
             RCLCPP_INFO(
                 node_->get_logger(),
                 "c_pitch: %f, c_yaw: %f", c_pitch, c_yaw);
             RCLCPP_INFO(
                 node_->get_logger(),
-                "offset_pitch: %f, offset_yaw: %f", pitch, yaw);
+                "offset_pitch: %f, offset_yaw: %f", offset_pitch, offset_yaw);
 #endif
+
             if (this->gimbal_ctrl_flag_)
             {
                 rm_interfaces::msg::GimbalCmd gimbal_cmd;
                 gimbal_cmd.id = gimbal_cmd_id++;
-                gimbal_cmd.position.pitch = -pitch + c_pitch;
-                gimbal_cmd.position.yaw = yaw + c_yaw;
-                gimbal_cmd.velocity.pitch = 0;
-                gimbal_cmd.velocity.yaw = 0;
+                gimbal_cmd.type = 0x2a;
+                gimbal_cmd.position.pitch = offset_pitch;
+                gimbal_cmd.position.yaw = -offset_yaw;
+                //哨兵 （【5 type】0x2a自瞄,0x3a巡逻,0x4a遥控器 【6 shoot】0x4b发射）
+                if (this->shoot_ctrl_flag_)
+                {
+                    if(abs(offset_pitch)<=0.5 && abs(offset_yaw)<=1)
+                    {
+                        gimbal_cmd.shoot = 0x4b;
+                        gimbal_cmd.position.pitch = 0;
+                        gimbal_cmd.position.yaw = 0;
+                    }
+                }
                 gimbal_cmd_pub_->publish(gimbal_cmd);
-            }
-            if (this->shoot_ctrl_flag_)
-            {
             }
         }
         else
         {
+            rm_interfaces::msg::GimbalCmd gimbal_cmd;
+            gimbal_cmd.id = gimbal_cmd_id++;
+            gimbal_cmd.type = 0x3a;
+            gimbal_cmd_pub_->publish(gimbal_cmd);
 #ifdef RM_DEBUG_MODE
             RCLCPP_INFO(
                 node_->get_logger(),
@@ -157,6 +163,7 @@ namespace rm_auto_aim
         // 0x00,休眠模式，0x01:自动射击模式，0x02：自动瞄准模式（不发子弹）,0x03,测试模式,不控制.
         // 0x10,设置目标为红色，0x11,设置目标为蓝色
         response->success = true;
+        aim_mode = request->mode;
         switch (request->mode)
         {
         case 0x00:

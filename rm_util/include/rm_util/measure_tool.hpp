@@ -64,7 +64,7 @@ namespace rm_util
          */
         void calc_view_angle(cv::Point2f p, float &pitch, float &yaw);
 
-    private:
+
         // 相机参数
         cv::Mat camera_intrinsic_;  // 相机内参3*3
         cv::Mat camera_distortion_; // 相机畸变参数1*5

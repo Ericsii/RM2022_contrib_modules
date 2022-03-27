@@ -107,6 +107,9 @@ namespace rm_auto_aim
         cv::Mat transformImg_;                         // 投影变换后图片
         std::vector<std::vector<cv::Point>> contours_; // 图像轮廓
         std::vector<cv::Vec4i> hierarchy_;             // 轮廓结构信息
+
+        //
+        cv::HOGDescriptor m_hog;
     };
 } // namespace rm_auto_aim
 

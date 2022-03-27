@@ -21,14 +21,19 @@ find_package(rclcpp_components REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(eigen3_cmake_module REQUIRED)
 find_package(Eigen3 REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(tf2 REQUIRED)
+find_package(tf2_ros REQUIRED)
+find_package(geometry_msgs REQUIRED)
+
 
 include_directories(include)
 
 # build shared lib
 add_library(${PROJECT_NAME} SHARED
   "src/detectors/armor_detector_svm.cpp"
-  "src/detectors/simple_auto_aim_algo.cpp"
-  "src/simple_auto_aim_node.cpp"
+  "src/detectors/auto_aim_algo.cpp"
+  "src/auto_aim_node.cpp"
 )
 
 set(dependencies
@@ -41,17 +46,20 @@ set(dependencies
   rclcpp
   rclcpp_components
   Eigen3
+  std_msgs
+  tf2
+  tf2_ros
+  geometry_msgs
 )
 
 ament_target_dependencies(${PROJECT_NAME} ${dependencies})
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(${dependencies} eigen3_cmake_module)
 
-# build executable
-add_executable(auto_aim_node "src/simple_auto_aim_main.cpp")
+add_executable(auto_aim_node "src/auto_aim_main.cpp")
 target_link_libraries(auto_aim_node ${PROJECT_NAME})
 
-rclcpp_components_register_nodes(${PROJECT_NAME} "rm_auto_aim::SimpleAutoAimNode")
+rclcpp_components_register_nodes(${PROJECT_NAME} "rm_auto_aim::AutoAimNode")
 
 install(
   DIRECTORY include/
