@@ -1,26 +1,3 @@
-<?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
-<package format="3">
-  <name>rm_util</name>
-  <version>0.0.1</version>
-  <description>SCURM utils</description>
-  <maintainer email="ericc_feng@qq.com">Eric Feng</maintainer>
-  <license>GNU General Public License v3.0</license>
-
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
-  <depend>rm_interfaces</depend>
-  <depend>libopencv-dev</depend>
-  <depend>rclcpp</depend>
-  <depend>cv_bridge</depend>
-  <depend>sensor_msgs</depend>
-  <depend>eigen3_cmake_module</depend>
-  <depend>eigen3</depend>
-
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
-
-  <export>
-    <build_type>ament_cmake</build_type>
-  </export>
-</package>
+version https://git-lfs.github.com/spec/v1
+oid sha256:5359ea3d75973a24388cb4ea10d30a8232cc0b0bb0560958e5ed5d8a9da42fe0
+size 809

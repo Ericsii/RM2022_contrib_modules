@@ -126,19 +126,8 @@ namespace rm_auto_aim
             {
                 rm_interfaces::msg::GimbalCmd gimbal_cmd;
                 gimbal_cmd.id = gimbal_cmd_id++;
-                gimbal_cmd.type = 0x2a;
                 gimbal_cmd.position.pitch = offset_pitch;
                 gimbal_cmd.position.yaw = -offset_yaw;
-                //哨兵 （【5 type】0x2a自瞄,0x3a巡逻,0x4a遥控器 【6 shoot】0x4b发射）
-                if (this->shoot_ctrl_flag_)
-                {
-                    if(abs(offset_pitch)<=0.5 && abs(offset_yaw)<=1)
-                    {
-                        gimbal_cmd.shoot = 0x4b;
-                        gimbal_cmd.position.pitch = 0;
-                        gimbal_cmd.position.yaw = 0;
-                    }
-                }
                 gimbal_cmd_pub_->publish(gimbal_cmd);
             }
         }
@@ -152,7 +141,7 @@ namespace rm_auto_aim
             RCLCPP_INFO(
                 node_->get_logger(),
                 "No armors");
-#endif
+#endif 
         }
     }
 

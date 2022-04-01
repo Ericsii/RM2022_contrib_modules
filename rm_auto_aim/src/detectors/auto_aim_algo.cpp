@@ -65,6 +65,7 @@ namespace rm_auto_aim
     {
         mTarget_yaw = 0;
         mTarget_pitch = 0;
+        shoot = false;
 
         // 自瞄预测参数
         bool same_armor = false, same_id = false;
@@ -97,9 +98,6 @@ namespace rm_auto_aim
         if (ret != 0)
         {
 #ifdef RM_DEBUG_MODE
-            cv::Mat debugImg = src;
-            cv::imshow("target", debugImg);
-#else
             cv::Mat debugImg = src;
             cv::imshow("target", debugImg);
 #endif
@@ -136,16 +134,13 @@ namespace rm_auto_aim
             points.push_back(armor_descriptors[i].points[2]);
             points.push_back(armor_descriptors[i].points[3]);
 
-            if (aim_mode == 0x01 && label == 0)
+            if (aim_mode == 0x11 && label == 0)
             {
 #ifdef RM_DEBUG_MODE
                 cv::Mat debugImg = src;
                 cv::imshow("target", debugImg);
-#else
-                cv::Mat debugImg = src;
-                cv::imshow("target", debugImg);
 #endif
-                return 1;
+                return 2; //自瞄时label为0则直接返回
             }
             //【图像->相机】PnP解算：目标图像坐标系--->在相机坐标系下的坐标
             if (label == 1 || label == 0)
@@ -154,7 +149,6 @@ namespace rm_auto_aim
                 mono_loacation_tool_->solve_pnp(points, mBigArmorPoints,
                                                 armor_target.postion, armor_target.rotation);   
                 armor_target.isBigArmor = true;
-                mTarget.armorDescriptor = armor_descriptors[i];
 #ifdef RM_DEBUG_MODE
                 RCLCPP_INFO(node_->get_logger(),"big_armor: %d", label);
 #endif
@@ -171,6 +165,8 @@ namespace rm_auto_aim
             Eigen::Vector3d position3d_world_temp = imu_q * cam2imu_static_ * position3d_camera_temp;
             if (i==0)
             {
+                //默认选择距离准星最近装甲板
+                mTarget.armorDescriptor = armor_descriptors[i];
                 position3d_camera = position3d_camera_temp;
                 position3d_world = position3d_world_temp;
             }
@@ -183,50 +179,34 @@ namespace rm_auto_aim
             }
             else
             {
+                same_id = false;
+                // 不同ID初始化滤波器
                 Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
                 z_k(0, 0) = 0;
                 z_k(1, 0) = 0;
                 z_k(2, 0) = 0;
                 ekf_filter->init(z_k);
-
-                same_id = false;
             }
-            // 2）判断是否为上次击打同一装甲板
+            // 2）判断是否为上次击打同一装甲板(如果是，则直接选中并跳出筛选)
             if (same_id && is_same_armor(last_position3d_world, position3d_world_temp, 5))
             {
                 same_armor = true;
                 mTarget.armorDescriptor = armor_descriptors[i];
                 position3d_camera = position3d_camera_temp;
                 position3d_world = position3d_world_temp;
-#ifdef RM_DEBUG_MODE
-                RCLCPP_INFO(node_->get_logger(),"same_armor_id: %d", label);
-#endif
                 break;
             }
             else
             {
                 same_armor = false;
+                // 不同装甲板初始化滤波器
                 Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
                 z_k(0, 0) = 0;
                 z_k(1, 0) = 0;
                 z_k(2, 0) = 0;
                 ekf_filter->init(z_k);
-                // RCLCPP_INFO(node_->get_logger(),"diff_armor_id: %d", label);
             }
         }
-
-#ifdef RM_DEBUG_MODE
-        if(mTarget.armorDescriptor.label!=0)
-        {
-            // 发布目标点的位置信息
-            geometry_msgs::msg::PointStamped target_point;
-            target_point.point.x = position3d_world(0,0)/100;
-            target_point.point.y = position3d_world(1,0)/100;
-            target_point.point.z = position3d_world(2,0)/100;
-            target_point.header.frame_id = "imu_link";
-            point_pub_->publish(target_point);
-        }
-#endif
         
         double target_pitch = rm_util::rad_to_deg(atan2(-position3d_camera(1, 0), sqrt(pow(position3d_camera(0,0),2)+pow(position3d_camera(2,0),2))));
         double target_yaw = rm_util::rad_to_deg(atan2(position3d_camera(0, 0), position3d_camera(2, 0)));
@@ -254,17 +234,15 @@ namespace rm_auto_aim
         double pre_target_yaw = target_yaw;
         double pre_target_distance = target_distance;
         double pre_target_height = target_height;
-        
-        double time = (time_stamp - last_time);
-        if(time > 40)  time /= 5;  //防止因两帧间时间差过大导致的过偏移
-
-       //实际目标pitch、yaw
+        //实际目标pitch、yaw
         mTarget_yaw = float(target_yaw);
         mTarget_pitch = float(target_pitch);
+        //预测击打延时--子弹飞行时间与发弹延迟
+        double time = (time_stamp - last_time);
+        if(time > 40)  time /= 5;  //防止因两帧间时间差过大导致的过偏移
+        double predict_time = (f_position3d_world.norm()*10) / initial_vel + shoot_delay;
 
         // step4.滤波预测补偿
-        end_pre = "normal";
-        aim_range = 0;
         if (same_armor){
             // 【正常滤波模式】 击打同一块装甲板，EKF滤波预测
             Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
@@ -295,13 +273,12 @@ namespace rm_auto_aim
             f_position3d_world(2, 0) = z_k(2, 0);
 
             //预测的击打点
-            double predict_time = (f_position3d_world.norm()*10) / initial_vel + shoot_delay;
             filter_position3d_world(0, 0) = z_k(0, 0) + x_k(3, 0)*predict_time;
             filter_position3d_world(1, 0) = z_k(1, 0) + x_k(4, 0)*predict_time;
             filter_position3d_world(2, 0) = z_k(2, 0) + x_k(5, 0)*predict_time;
         
 #ifdef RM_DEBUG_MODE
-            RCLCPP_INFO(node_->get_logger(),"v_x: %f, v_y: %f, v_z: %f", x_k(3, 0), x_k(4, 0), x_k(5, 0));
+            RCLCPP_INFO(node_->get_logger(),"【速度】 v_x: %f, v_y: %f, v_z: %f", x_k(3, 0), x_k(4, 0), x_k(5, 0));
 #endif
         } else {
             filter_position3d_world(0, 0) = position3d_world(0, 0);
@@ -310,10 +287,12 @@ namespace rm_auto_aim
         }
 
         // step5.反小陀螺
+        end_pre = "normal";
+        aim_range = 0;
         double world_pitch = rm_util::rad_to_deg(atan2(position3d_world(2, 0), sqrt(pow(position3d_world(0,0),2)+pow(position3d_world(1,0),2))));
         double world_yaw = rm_util::rad_to_deg(atan2(position3d_world(1, 0), position3d_world(0, 0)));
         if (aim_mode==0x11 && same_id && mTarget.armorDescriptor.label){
-            //【反小陀螺模式】 同一id(不为 0)
+            //【反小陀螺模式之跟随】 0x11--同一id(不为 0)
             // 1.通过装甲板面积周期变化得到旋转周期 auto_aim_time[0]
             double armor_area = mTarget.armorDescriptor.armorWidth * mTarget.armorDescriptor.armorHeight;
             double area_rot = (armor_area - last_armor_area)/time;
@@ -321,10 +300,6 @@ namespace rm_auto_aim
             {
                 auto_aim_time[0] = time_stamp - auto_aim_time[2];
                 auto_aim_time[2] = time_stamp;
-#ifdef RM_DEBUG_MODE
-                RCLCPP_INFO(node_->get_logger(), "旋转周期：%f", auto_aim_time[0]);
-                RCLCPP_INFO(node_->get_logger(), "上一次装甲板面积最大时刻：%f", auto_aim_time[2]);
-#endif
             }
             // 2.切换装甲板
             if(abs(last_yaw-world_yaw)>10 || !same_armor){
@@ -354,19 +329,21 @@ namespace rm_auto_aim
             last_armor_area_rot = area_rot;
             last_yaw = world_yaw;
         }
-
-#ifdef RM_DEBUG_MODE
-        if(mTarget.armorDescriptor.label!=0)
-        {
-            // 发布滤波后的目标点的位置信息
-            geometry_msgs::msg::PointStamped cam_target_point;
-            cam_target_point.point.x = filter_position3d_world(0,0)/100;
-            cam_target_point.point.y = filter_position3d_world(1,0)/100;
-            cam_target_point.point.z = filter_position3d_world(2,0)/100;
-            cam_target_point.header.frame_id = "imu_link";
-            cam_point_pub_->publish(cam_target_point);
+        if(aim_mode==0x22 && same_id && mTarget.armorDescriptor.label){
+            //【反小陀螺模式之云台不动】 0x22--同一id(不为 0)
+            // 1.通过装甲板面积周期变化得到旋转周期 auto_aim_time[0]
+            double armor_area = mTarget.armorDescriptor.armorWidth * mTarget.armorDescriptor.armorHeight;
+            double area_rot = (armor_area - last_armor_area)/time;
+            if(area_rot*last_armor_area_rot <= 0)
+            {
+                auto_aim_time[0] = time_stamp - auto_aim_time[2];
+                auto_aim_time[2] = time_stamp;
+            }
+            if(time_stamp>=(auto_aim_time[2]+auto_aim_time[0]-predict_time))
+                shoot = true;
+            last_armor_area = armor_area;
+            last_armor_area_rot = area_rot;
         }
-#endif
 
         // 【世界->相机】滤波后目标世界坐标系--->在相机坐标系下的坐标
         Eigen::Vector3d pre_camera;
@@ -374,97 +351,77 @@ namespace rm_auto_aim
         pre_camera(1, 0) = filter_position3d_world(1, 0);
         pre_camera(2, 0) = filter_position3d_world(2, 0);
         pre_camera = cam2imu_static_.inverse() * imu_q.inverse() * pre_camera;
-
         /* yaw预测补偿*/
         pre_target_yaw = rm_util::rad_to_deg(atan2(pre_camera(0, 0), pre_camera(2, 0)));
         pre_target_distance = sqrt(pow(filter_position3d_world(0,0),2)+pow(filter_position3d_world(1,0),2));
         if(abs(pre_target_distance)>1000)
-            return 1;
+            return 3; //防止距离错误
         /* pitch抬枪补偿 distance(单位：mm) height(单位：m)*/
-        pre_target_height = filter_position3d_world(2, 0)-5; //距离枪口高度
+        pre_target_height = filter_position3d_world(2, 0); //距离枪口高度
         auto offset_pitch = std::make_shared<rm_trajectory::GetPitch>(initial_vel);
         double pitch_temp = offset_pitch->get_pitch(pre_target_distance*10, pre_target_height*10, initial_vel);
         pre_target_pitch = pitch_temp; //此处得到的是绝对姿态pitch，需要减去当前pitch角
-#ifdef RM_DEBUG_MODE
-        RCLCPP_INFO(node_->get_logger(), "pre_target_height: %f, pre_target_pitch: %f", pre_target_height,pre_target_pitch);
-#endif
+
         // 传输最终pitch、yaw数据到上一层
         if(abs(mTarget_pitch) <= 30 && abs(mTarget_yaw) <= 30)
         {
             mTarget_pitch = float(pre_target_pitch - c_pitch);
             if(end_pre == "right")
-                mTarget_yaw = float(target_yaw) - aim_range;
+                mTarget_yaw = float(pre_target_yaw) - aim_range;
             else if(end_pre == "left")
-                mTarget_yaw = float(target_yaw) + aim_range;
+                mTarget_yaw = float(pre_target_yaw) + aim_range;
             else
-                mTarget_yaw = float(target_yaw);
+                mTarget_yaw = float(pre_target_yaw);
         }
 
         //debug输出
-        if(1)
-        {  
 #ifdef RM_DEBUG_MODE
-            cv::Mat debugImg = src;
-            cv::putText(debugImg,
-                std::to_string(int(pre_target_distance)),
-                mTarget.armorDescriptor.points[0],
-                cv::FONT_HERSHEY_SIMPLEX, 1,
-                rm_util::red, 1);
-            cv::circle(debugImg, mTarget.armorDescriptor.centerPoint, 5, {0, 255, 0}, 3);
+        RCLCPP_INFO(node_->get_logger(), "\n------------滤波后：------------");
+        RCLCPP_INFO(node_->get_logger(), "[world] target_x: %f, target_y: %f, target_z: %f", filter_position3d_world(0, 0), filter_position3d_world(1, 0), filter_position3d_world(2, 0));
+        RCLCPP_INFO(node_->get_logger(), "[camera] target_x: %f, target_y: %f, target_z: %f", pre_camera(0, 0), pre_camera(1, 0), pre_camera(2, 0));
+        RCLCPP_INFO(node_->get_logger(), "pre_target_height: %f, pre_target_pitch: %f", pre_target_height, pre_target_pitch);        
+        RCLCPP_INFO(node_->get_logger(), "mTarget_pitch: %f, mTarget_yaw: %f", mTarget_pitch, mTarget_yaw);
+        RCLCPP_INFO(node_->get_logger(), "time: %f", time);
+        time_bet = (time_bet + time) / 2;
+        RCLCPP_INFO(node_->get_logger(), "平均时间间隔: %f ，fps: %f", time_bet, 1000.0 / time_bet);
 
-            RCLCPP_INFO(node_->get_logger(), "\n------------滤波后：------------");
-            RCLCPP_INFO(node_->get_logger(),"[world] target_x: %f, target_y: %f, target_z: %f", filter_position3d_world(0,0),filter_position3d_world(1,0),filter_position3d_world(2,0));
-            RCLCPP_INFO(node_->get_logger(),"[camera] target_x: %f, target_y: %f, target_z: %f", pre_camera(0,0), pre_camera(1,0), pre_camera(2,0));
-        
-            cv::cv2eigen(mono_loacation_tool_->camera_intrinsic_, F);
-            Eigen::Vector3d pre_img = F * pre_camera / pre_camera(2,0);
-            cv::circle(debugImg, {int(pre_img(0, 0)), int(pre_img(1, 0))}, 5, {255, 255, 0}, 3);        
-            cv::imshow("target", debugImg);
+        RCLCPP_INFO(node_->get_logger(), "旋转周期：%f", auto_aim_time[0]);
+        RCLCPP_INFO(node_->get_logger(), "上一次装甲板面积最大时刻：%f", auto_aim_time[2]);
 
-            RCLCPP_INFO(node_->get_logger(),"mTarget_pitch: %f, mTarget_yaw: %f", mTarget_pitch, mTarget_yaw);
-            // p_t = (position3d_world - last_position3d_world);
-            // RCLCPP_INFO(node_->get_logger(),"real_v_x: %f, real_v_y: %f, real_v_z: %f", p_t(0,0)/time ,p_t(1,0)/time ,p_t(2,0)/time);
-            // if(p_t(0,0)/time<1||p_t(1,0)/time<1||p_t(2,0)/time<1)
-            //     p_t = position3d_world-position3d_world;
-            RCLCPP_INFO(node_->get_logger(),"time: %f", time);
-            time_bet = (time_bet+time)/2;
-            RCLCPP_INFO(node_->get_logger(),"平均时间间隔: %f ，fps: %f", time_bet, 1000.0/time_bet);
-#else
-            // 发布滤波后的目标点的位置信息
-            geometry_msgs::msg::PointStamped cam_target_point;
-            cam_target_point.point.x = filter_position3d_world(0, 0) / 100;
-            cam_target_point.point.y = filter_position3d_world(1, 0) / 100;
-            cam_target_point.point.z = filter_position3d_world(2, 0) / 100;
-            cam_target_point.header.frame_id = "imu_link";
-            cam_point_pub_->publish(cam_target_point);
+        // 发布滤波后的目标点的位置信息
+        geometry_msgs::msg::PointStamped cam_target_point;
+        cam_target_point.point.x = filter_position3d_world(0, 0) / 100;
+        cam_target_point.point.y = filter_position3d_world(1, 0) / 100;
+        cam_target_point.point.z = filter_position3d_world(2, 0) / 100;
+        cam_target_point.header.frame_id = "imu_link";
+        cam_point_pub_->publish(cam_target_point);
 
-            // 发布目标点的位置信息
-            geometry_msgs::msg::PointStamped target_point;
-            target_point.point.x = position3d_world(0, 0) / 100;
-            target_point.point.y = position3d_world(1, 0) / 100;
-            target_point.point.z = position3d_world(2, 0) / 100;
-            target_point.header.frame_id = "imu_link";
-            point_pub_->publish(target_point);
+        // 发布目标点的位置信息
+        geometry_msgs::msg::PointStamped target_point;
+        target_point.point.x = position3d_world(0, 0) / 100;
+        target_point.point.y = position3d_world(1, 0) / 100;
+        target_point.point.z = position3d_world(2, 0) / 100;
+        target_point.header.frame_id = "imu_link";
+        point_pub_->publish(target_point);
 
-            cv::Mat debugImg = src;
-            cv::putText(debugImg,
-                std::to_string(int(target_distance)),
-                mTarget.armorDescriptor.points[0],
-                cv::FONT_HERSHEY_SIMPLEX, 1,
-                rm_util::red, 3);
-            cv::putText(debugImg,
-                std::to_string(mTarget.armorDescriptor.label),
-                mTarget.armorDescriptor.points[1],
-                cv::FONT_HERSHEY_SIMPLEX, 1,
-                rm_util::blue, 3);
-            cv::circle(debugImg, mTarget.armorDescriptor.centerPoint, 5, {0, 255, 0}, 3);   
-            cv::cv2eigen(mono_loacation_tool_->camera_intrinsic_, F);
-            Eigen::Vector3d pre_img = F * pre_camera / pre_camera(2,0);
-            cv::circle(debugImg, {int(pre_img(0, 0)), int(pre_img(1, 0))}, 5, {255, 255, 0}, 3);        
-            cv::imshow("target", debugImg);
+        cv::Mat debugImg = src;
+        cv::putText(debugImg,
+                    std::to_string(int(target_distance)),
+                    mTarget.armorDescriptor.points[0],
+                    cv::FONT_HERSHEY_SIMPLEX, 1,
+                    rm_util::red, 3);
+        cv::putText(debugImg,
+                    std::to_string(mTarget.armorDescriptor.label),
+                    mTarget.armorDescriptor.points[1],
+                    cv::FONT_HERSHEY_SIMPLEX, 1,
+                    rm_util::blue, 3);
+        cv::circle(debugImg, mTarget.armorDescriptor.centerPoint, 5, {0, 255, 0}, 3);
+        cv::cv2eigen(mono_loacation_tool_->camera_intrinsic_, F);
+        Eigen::Vector3d pre_img = F * pre_camera / pre_camera(2, 0);
+        cv::circle(debugImg, {int(pre_img(0, 0)), int(pre_img(1, 0))}, 5, {255, 255, 0}, 3);
+        cv::imshow("target", debugImg);
 #endif            
-        }
-
+        
         last_time = time_stamp;
         last_label = mTarget.armorDescriptor.label;
         last_position3d_world = position3d_world;

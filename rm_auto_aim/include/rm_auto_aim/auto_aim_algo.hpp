@@ -25,21 +25,58 @@ namespace rm_auto_aim
     class AutoAimAlgo
     {
     public:
+        /**
+         * @brief 自瞄算法节点构造函数
+         * 
+         * @param node ： rclcpp 节点
+         * @param camera_intrinsic ： 相机内参
+         * @param camera_distortion ： 相机畸变参数
+         * @param armor_detector ： 装甲板检测类，见armor_detector_svm.hpp
+         */
         AutoAimAlgo(rclcpp::Node::SharedPtr node,
                           std::vector<double> camera_intrinsic,
                           std::vector<double> camera_distortion,
                           std::shared_ptr<ArmorDetector> armor_detector);
 
+        /**
+         * @brief 结合下位机返回的数据对图像进行处理
+         * 
+         * @param time_stamp_ms ： 当前图像时间戳
+         * @param src ： 待处理图像
+         * @param pose ： 姿态四元数
+         * @return int ： 0）检测成功 1）未检测到目标
+         */
+        int process(double time_stamp_ms, cv::Mat &src, Eigen::Quaterniond pose);
+
+        /**
+         * @brief 设置目标颜色
+         * 
+         * @param is_red ： 目标是否为红色
+         */
         void set_target_color(bool is_red);
-        int process(double time_stamp_ms, cv::Mat &src, Eigen::Quaterniond pose, int aim_mode);
+
+        /**
+         * @brief 获得目标装甲板
+         * 
+         * @return ArmorTarget ： 描述目标装甲板的信息结构体，见armor_detector_interface.hpp
+         */
         ArmorTarget getTarget();
+
+        /**
+         * @brief 设置是否追踪目标
+         * 
+         * @param is_track ： 是否追踪
+         */
         void setTrack(bool is_track);
+
+        int process(double time_stamp_ms, cv::Mat &src, Eigen::Quaterniond pose, int aim_mode);
         bool is_same_armor(Eigen::Vector3d old_position3d, Eigen::Vector3d now_position3d, double distance_threshold);
 
         float mTarget_pitch = 0;
         float mTarget_yaw = 0;
         double mTarget_distance = 0;
         double mTarget_height = 0;
+        bool shoot = false;
 
     private:
         rclcpp::Node::SharedPtr node_;                                  // rclcpp 节点
@@ -74,7 +111,6 @@ namespace rm_auto_aim
         int id = 0;
         int all = 0;
         double time_bet = 10;
-        // double aim_round_time = ;
         double aim_range = 5;
         double last_armor_area = 0;
         double last_armor_area_rot = 0;
