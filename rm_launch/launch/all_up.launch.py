@@ -7,31 +7,26 @@ from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode
 import yaml
 
-
 def generate_launch_description():
-    param_path = os.path.join(get_package_share_directory(
-        "rm_launch"), "config/all_param.yaml")
+    param_path = os.path.join(get_package_share_directory("rm_launch"), "config/all_param.yaml")
 
-    robot_name = 'sentry'
+    robot_name = 'infantry4'
     with open(param_path, 'r') as f:
-        mvcam_params = yaml.safe_load(
-            f)['mindvision_camera']['ros__parameters']
+        mvcam_params = yaml.safe_load(f)['mindvision_camera']['ros__parameters']
     with open(param_path, 'r') as f:
         base_params = yaml.safe_load(f)['base']['ros__parameters']
     with open(param_path, 'r') as f:
-        sentry_params = yaml.safe_load(f)['sentry_node']['ros__parameters']
+        autoaim_params = yaml.safe_load(f)['auto_aim']['ros__parameters']
     with open(param_path, 'r') as f:
         imu_fliter_params = yaml.safe_load(f)['imu_filter']['ros__parameters']
-
-    # 创建容器
+    
+    #创建容器
     rm_container = Node(
         name='rm_container',
         package='rclcpp_components',
         executable='component_container_mt',
         output='screen',
-    )   
-    print(mvcam_params)
-
+    )
     load_compose = LoadComposableNodes(
         target_container='rm_container',
         composable_node_descriptions=[
@@ -57,15 +52,15 @@ def generate_launch_description():
                 parameters=[base_params],
             ),
             ComposableNode(
-                package="rm_sentry",
-                plugin='rm_sentry::SentryNode',
-                name='sentry_node',
+                package='rm_auto_aim',
+                plugin='rm_auto_aim::AutoAimNode',
+                name='auto_aim_node',
                 namespace=robot_name,
-                parameters=[sentry_params],
+                parameters=[autoaim_params],
             )
         ]
     )
-
+    
     ld = LaunchDescription()
     ld.add_action(load_compose)
     ld.add_action(rm_container)

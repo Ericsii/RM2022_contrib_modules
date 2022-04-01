@@ -5,7 +5,6 @@
 
 #include "opencv2/opencv.hpp"
 #include "rclcpp/rclcpp.hpp"
-
 namespace rm_auto_aim
 {
     typedef struct _LightDescriptor

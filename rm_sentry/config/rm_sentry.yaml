@@ -1,0 +1,10 @@
+sentry:
+    ros__parameters:
+        armor_is_red: false
+        camera_name: "mv_camera"
+        imu_name: "imu/data_raw"
+        best_effort_qos: True
+        robot_color: "red"
+        auto_start: false
+        xml_path: "./contrib_modules/rm_sentry/models/model-opt-int8.xml"
+        bin_path: "./contrib_modules/rm_sentry/models/model-opt-int8.bin"

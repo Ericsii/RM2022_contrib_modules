@@ -6,6 +6,7 @@
 #include "opencv2/opencv.hpp"
 #include "std_msgs/msg/header.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/quaternion.hpp"
 
 #include "rm_util/rm_util.hpp"
 #include "rm_hero_auto_aim/armor_detector_interface.hpp"
