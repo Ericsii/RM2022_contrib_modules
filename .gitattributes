@@ -1,1 +1,2 @@
 rm_auto_aim/resource/HOG_SVM.xml filter=lfs diff=lfs merge=lfs -text
+*.onnx filter=lfs diff=lfs merge=lfs -text
