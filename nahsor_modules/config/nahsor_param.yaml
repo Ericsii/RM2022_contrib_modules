@@ -1,8 +1,0 @@
-nahsor:
-    ros__parameters:
-        debug: true
-        color: "red"
-        imu_name: "pose_stamped"
-        camera_name: "mv_camera"
-        auto_start: true
-        best_effort_qos: true
