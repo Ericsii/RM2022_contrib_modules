@@ -418,8 +418,8 @@ int ArmorDetectorSVM::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
 #ifdef RM_DEBUG_MODE
     cv::imshow("armor_num", transformImg_);
 #endif
-    cv::imshow("armor_num", transformImg_);
     cv::cvtColor(transformImg_, transformImg_, cv::COLOR_BGR2GRAY);             // 转换灰度图
+    cv::threshold(transformImg_, transformImg_, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 二值化
     cv::resize(transformImg_,transformImg_,cv::Size(48,32));
     std::vector<float> descriptors;
     m_hog.compute(transformImg_, descriptors, cv::Size(8, 8));
