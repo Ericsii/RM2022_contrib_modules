@@ -8,21 +8,16 @@ namespace rm_filters
     class Kalman : public Filters
     {
     public:
-        Kalman(const Eigen::MatrixXd &x_p_k, Eigen::MatrixXd &x_l_k,
-               const Eigen::MatrixXd &H,const Eigen::MatrixXd &Q, 
-               const Eigen::MatrixXd &P,const Eigen::MatrixXd &R)
+        Kalman(const Eigen::MatrixXd &Q, const Eigen::MatrixXd &R)
         {
-            this->H = H;
-            this->P = P;
             this->R = R;
             this->Q = Q;
-            this->x_p_k = x_p_k;
-            this->x_l_k = x_l_k;
         }
+        void init(Eigen::MatrixXd &z_k) override;
         Eigen::MatrixXd predict(Eigen::MatrixXd &U, double t) override;
         Eigen::MatrixXd update(Eigen::MatrixXd &z_k) override;
 
-    public:
+    private:
         Eigen::MatrixXd x_p_k;
         Eigen::MatrixXd x_l_k;
         Eigen::MatrixXd x_k;
@@ -33,7 +28,7 @@ namespace rm_filters
         Eigen::MatrixXd Q;
         Eigen::MatrixXd P;
 
-    public:
+    private:
         Eigen::MatrixXd R;
         Eigen::MatrixXd z_k;
         Eigen::MatrixXd U;

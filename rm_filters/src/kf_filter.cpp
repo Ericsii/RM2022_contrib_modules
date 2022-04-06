@@ -3,16 +3,31 @@
 namespace rm_filters
 {
 
+	void Kalman::init(Eigen::MatrixXd &z_k) {
+	
+		Eigen::MatrixXd x_p_k(Matrix_x, 1);
+		x_p_k(0, 0) = z_k(0, 0); x_p_k(1, 0) = z_k(1, 0), x_p_k(2, 0) = z_k(2, 0);
+		x_p_k(3, 0) = 0; x_p_k(4, 0) = 0; x_p_k(5, 0) = 0;
+
+		this->x_p_k = x_p_k;
+		this->x_l_k = x_p_k;
+
+		Eigen::MatrixXd P(Matrix_x, Matrix_x);
+   	 	P = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);
+
+		this->P = P;
+	}
 	Eigen::MatrixXd Kalman::predict(Eigen::MatrixXd &U, double t)
 	{
         double delta_t = t;
 
         Eigen::MatrixXd A(Matrix_x, Matrix_x);
-		A(0, 0) = 1, A(0, 1) = 0, A(0, 2) = 0, A(0, 3) = delta_t, A(0, 4) = 0;
-		A(1, 0) = 0, A(1, 1) = 1, A(1, 2) = 0, A(1, 3) = 0, A(1, 4) = delta_t;
-		A(2, 0) = 0, A(2, 1) = 0, A(2, 2) = 1, A(2, 3) = 0, A(2, 4) = 0;
-		A(3, 0) = 0, A(3, 1) = 0, A(3, 2) = 0, A(3, 3) = 1, A(3, 4) = 0;
-		A(4, 0) = 0, A(4, 1) = 0, A(4, 2) = 0, A(4, 3) = 0, A(4, 4) = 1;
+		A(0, 0) = 1, A(0, 1) = 0, A(0, 2) = 0, A(0, 3) = delta_t, A(0, 4) = 0, A(0, 5) = 0;
+		A(1, 0) = 0, A(1, 1) = 1, A(1, 2) = 0, A(1, 3) = 0, A(1, 4) = delta_t, A(1, 5) = 0;
+		A(2, 0) = 0, A(2, 1) = 0, A(2, 2) = 1, A(2, 3) = 0, A(2, 4) = 0, A(2, 5) = delta_t;
+		A(3, 0) = 0, A(3, 1) = 0, A(3, 2) = 0, A(3, 3) = 1, A(3, 4) = 0, A(3, 5) = 0;
+		A(4, 0) = 0, A(4, 1) = 0, A(4, 2) = 0, A(4, 3) = 0, A(4, 4) = 1, A(4, 5) = 0;
+		A(5, 0) = 0, A(5, 1) = 0, A(5, 2) = 0, A(5, 3) = 0, A(5, 4) = 0, A(5, 5) = 1;
 
 	    Eigen::MatrixXd B(Matrix_x, 1);
 		B(0, 0) = pow(delta_t, 2) / 2;
@@ -20,6 +35,7 @@ namespace rm_filters
 		B(2, 0) = pow(delta_t, 2) / 2;
 		B(3, 0) = delta_t;
 		B(4, 0) = delta_t;
+		B(5, 0) = delta_t;
 
 		x_p_k = A * x_l_k + B * U;
 		P = A * P * A.transpose() + Q;

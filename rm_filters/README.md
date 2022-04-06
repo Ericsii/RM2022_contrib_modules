@@ -46,48 +46,53 @@ rm_filters 卡尔曼滤波模块。
 * KF滤波器的使用
 
 ```c++
-Filters *kf_filter = new Kalman(x_p_k, x_l_k, A, H, Q, P, R, B, delta_t);
-kf_filter->predict(U);
-kf_filter->update(z_k);
+Eigen::MatrixXd Q(rm_filters::Matrix_x, rm_filters::Matrix_x);
+Q = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//需要调参(本定义方式为全0矩阵)
+
+Eigen::MatrixXd R(rm_filters::Matrix_y, rm_filters::Matrix_y);
+R = Eigen::MatrixXd::Zero(Matrix_y, Matrix_y);		//需要调参(本定义方式为全0矩阵)
+
+Filters *kf_filter = new Kalman(Q, R);
+
+Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
+z_k(0, 0) = position3d_world(0, 0), z_k(1, 0) = position3d_world(1, 0);
+z_k(2, 0) = position3d_world(2, 0);	//传入当前装甲板信息
+
+kf_filter->init(z_k);				//初始化滤波器
+
+Eigen::MatrixXd U(rm_filters::Matrix_x, rm_filters::Matrix_x);
+U = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//暂时不需要调参
+
+kf_filter->predict(U, t);
+Eigen::MatrixXd x_k = kf_filter->update(z_k);		//更新，此时的x_k即为滤波后状态向量
 ```
 
 - EKF滤波器的使用
 
 ```c++
-//根据实际情况设定filter_interface.hpp里矩阵参数
+Eigen::MatrixXd Q(rm_filters::Matrix_x, rm_filters::Matrix_x);
+Q = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//需要调参(本定义方式为全0矩阵)
 
-//假如需要x,y,z,x_v,y_v三个参数，Matrix_x = 5
-#define Matrix_x 5
+Eigen::MatrixXd R(rm_filters::Matrix_y, rm_filters::Matrix_y);
+R = Eigen::MatrixXd::Zero(Matrix_y, Matrix_y);		//需要调参(本定义方式为全0矩阵)
 
-//Matrix_y, 传感器状态向量参数个数，假如传感器有x,y,z三个参数，Matrix_y = 3
-#define Matrix_y 3
 
-//x_l_k = [x, y, z, x_v, y_v];当前车体状况
-Eigen::MatrixXd x_l_k(Matrix_x, 1);
-x_p_k = x_l_k;
+Filters *ekf_filter = new ExKalman(Q, R, 
+						rm_filters::MState::const_acc, 
+                        rm_filters::MState::df_const_acc, 						 	                               rm_filters::MState::se_df_const_acc, 					                                 rm_filters::MState::const_acc_sensor, 
+                        rm_filters::MState::df_const_acc_sensor,
+						rm_filters::MState::se_df_const_acc_sensor);
 
-//z_k = [x, y, z];三个方向上传感器观测值
-Eigen::MatrixXd z_k(Matrix_y, 1);
+Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
+z_k(0, 0) = position3d_world(0, 0), z_k(1, 0) = position3d_world(1, 0);
+z_k(2, 0) = position3d_world(2, 0);	//传入当前装甲板信息
 
-//初步测试时，Q矩阵可以设为单位矩阵
-Eigen::MatrixXd Q(Matrix_x, Matrix_x);//并初始化为单位矩阵
+ekf_filter->init(z_k);		//初始化滤波器
+Eigen::MatrixXd U(rm_filters::Matrix_x, rm_filters::Matrix_x);
+U = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//暂时不需要调参
 
-//不知道传感器误差情况下，可先初始化为相对单位矩阵（例如如果要进行滤波数据单位为mm，可初始化为1mm）
-Eigen::MatrixXd R(Matrix_y, Matrix_y);
-
-//加速度向量，即各个方向上的加速度，不加以控制时，可以初始化为0矩阵。
-//如果设为0矩阵出现数值错误，注释掉filter_state.cpp里const_acc中Eigen::MatrixXd x_p = A * x_l_k + U * B;这条语句中的 U * B部分
-Eigen::MatrixXd U(Matrix_x, Matrix_x);
-
-//方差矩阵P,滤波器会自动更新，初始化为零矩阵即可
-P = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);
-
-Filters *ekf_filter = new ExKalman(x_p_k, x_l_k, Q, P, R, 
-						MState::const_acc, MState::df_const_acc, MState::se_df_const_acc,
-						MState::const_acc_sensor, MState::df_const_acc_sensor,
-						MState::se_df_const_acc_sensor);
-ekf_filter->predict(U, t);//t要参考帧率
-ekf_filter->update(z_k);
+ekf_filter->predict(U, t);	//预测
+Eigen::MatrixXd x_k = ekf_filter->update(z_k);	//更新，此时的x_k即为滤波后状态向量
 ```
 
 ## 开发日志
@@ -124,5 +129,28 @@ ekf_filter->update(z_k);
 | CTRV | 103.9549      | 71.99         | 100.3734      | 100.0412      |
 | CA   | 103.9549      | 76.2265       | 100.3734      | 79.3148       |
 
-### （未解决）关于CTRV角速度的获取\更新
+---
+
+## 参数记录
+
+### 28/3 步兵参数
+
+```c++
+	Q(0, 0) = 0.01; Q(0, 1) = 0;  Q(0, 2) = 0; 
+	Q(0, 3) = 0; Q(0, 4) = 0;  Q(0, 5) = 0;
+	Q(1, 0) = 0; Q(1, 1) = 0.01;  Q(1, 2) = 0; 
+	Q(1, 3) = 0; Q(1, 4) = 0;  Q(1, 5) = 0;
+	Q(2, 0) = 0; Q(2, 1) = 0;  Q(2, 2) = 0.005; 
+	Q(2, 3) = 0; Q(2, 4) = 0;  Q(2, 5) = 0;
+	Q(3, 0) = 0; Q(3, 1) = 0;  Q(3, 2) = 0; 
+	Q(3, 3) = 0.01; Q(3, 4) = 0;  Q(3, 5) = 0;
+    Q(4, 0) = 0; Q(4, 1) = 0;  Q(4, 2) = 0; 
+	Q(4, 3) = 0; Q(4, 4) = 0.01;  Q(4, 5) = 0;
+	Q(5, 0) = 0; Q(5, 1) = 0;  Q(5, 2) = 0;
+	Q(5, 3) = 0; Q(5, 4) = 0;  Q(5, 5) = 0.005;
+	
+    R(0, 0) = 0.005, R(0, 1) = 0, R(0, 2) = 0;
+    R(1, 0) = 0, R(1, 1) = 0.005, R(1, 2) = 0;
+    R(2, 0) = 0, R(2, 1) = 0, R(2, 2) = 0.0025;
+```
 

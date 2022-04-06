@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2022-01-17 16:04:49
- * @LastEditTime: 2022-01-19 15:23:04
- * @LastEditors: Please set LastEditors
- * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- * @FilePath: /scu_rm_ros/contrib_modules/rm_filters/src/ekf_filter.cpp
- */
 #include "rm_filters/ekf_filter.hpp"
 
 namespace rm_filters {
@@ -27,20 +19,6 @@ void ExKalman::init(Eigen::MatrixXd &z_k) {
 
 Eigen::MatrixXd ExKalman::predict(Eigen::MatrixXd &U, double t) {
 
-	Eigen::MatrixXd Q(Matrix_x, Matrix_x);
-    Q(0, 0) = 0.01; Q(0, 1) = 0;  Q(0, 2) = 0; 
-	Q(0, 3) = 0; Q(0, 4) = 0;  Q(0, 5) = 0;
-	Q(1, 0) = 0; Q(1, 1) = 0.01;  Q(1, 2) = 0; 
-	Q(1, 3) = 0; Q(1, 4) = 0;  Q(1, 5) = 0;
-	Q(2, 0) = 0; Q(2, 1) = 0;  Q(2, 2) = 0.01; 
-	Q(2, 3) = 0; Q(2, 4) = 0;  Q(2, 5) = 0;
-	Q(3, 0) = 0; Q(3, 1) = 0;  Q(3, 2) = 0; 
-	Q(3, 3) = 0.01; Q(3, 4) = 0;  Q(3, 5) = 0;
-    Q(4, 0) = 0; Q(4, 1) = 0;  Q(4, 2) = 0; 
-	Q(4, 3) = 0; Q(4, 4) = 0.01;  Q(4, 5) = 0;
-	Q(5, 0) = 0; Q(5, 1) = 0;  Q(5, 2) = 0;
-	Q(5, 3) = 0; Q(5, 4) = 0;  Q(5, 5) = 0.01;
-
 	A = df_state(x_l_k, U, t);
 	W = se_df_state(x_l_k, U, t);
 	x_p_k = base_state(x_l_k, U, t);
@@ -48,11 +26,6 @@ Eigen::MatrixXd ExKalman::predict(Eigen::MatrixXd &U, double t) {
 	return x_p_k;
 }
 Eigen::MatrixXd ExKalman::update(Eigen::MatrixXd &z_k) {
-
-	Eigen::MatrixXd R(Matrix_y, Matrix_y);
-    R(0, 0) = 0.01, R(0, 1) = 0, R(0, 2) = 0;
-    R(1, 0) = 0, R(1, 1) = 0.01, R(1, 2) = 0;
-    R(2, 0) = 0, R(2, 1) = 0, R(2, 2) = 0.01;
 
 	H = df_sensor(x_p_k);
 	V = se_df_sensor(x_p_k);
