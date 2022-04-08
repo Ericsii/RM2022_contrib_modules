@@ -15,26 +15,65 @@ namespace rm_trajectory
     GetPitch::GetPitch(double initial_vel)
     : initial_vel_(initial_vel) {}
 
-    double GetPitch::pitch_1(double target_h) {
-        double pitch = 0.05985 * target_h + 2.794;
+    double GetPitch::pitch_1(double target_h, double bullet_v) {
+
+        double pitch = 0;
+
+        if (bullet_v == 30) {
+            pitch = 0.05985 * target_h + 2.794;           
+        }
+
+        if (bullet_v == 18) {
+            pitch = 0.04518 * target_h + 3.257;
+        }
+
         return pitch;
     } 
-    double GetPitch::pitch_3(double target_h) {
+    double GetPitch::pitch_3(double target_h, double bullet_v) {
+
         double pitch = 0;
-        if (target_h > 0) {
-            pitch = 0.01736 * target_h + 2.975;
+
+        if (bullet_v == 30){
+            if (target_h > 0) {
+                pitch = 0.01736 * target_h + 2.975;
+                }
+            else {
+                pitch = 0.01736 * (target_h - 70) + 2.975;
+            }            
         }
-        else {
-            pitch = 0.01736 * (target_h - 70) + 2.975;
+
+        if (bullet_v == 18) {
+            pitch = 0.01759 * target_h + 4.546;
         }
+
         return pitch;
     }
-    double GetPitch::pitch_5(double target_h) {
-        double pitch = 0.01055 * target_h + 4.292;
+    double GetPitch::pitch_5(double target_h, double bullet_v) {
+
+        double pitch = 0;
+
+        if (bullet_v == 30) {
+            pitch = 0.01055 * target_h + 4.292;
+        }
+
+        if (bullet_v == 18) {
+            pitch = 0.01059 * target_h + 6.482; 
+        }
+
         return pitch;
     }
-    double GetPitch::pitch_7(double target_h) {
-        double pitch = 0.007561 * target_h + 5.16;
+    double GetPitch::pitch_7(double target_h, double bullet_v) {
+
+        double pitch = 0;
+
+        if (bullet_v == 30) {
+            pitch = 0.007561 * target_h + 5.16;
+        }
+
+        if (bullet_v == 18) {
+            pitch = 0.007972 * target_h + 7.762;
+        }
+
         return pitch;
     }
 
@@ -42,19 +81,13 @@ namespace rm_trajectory
 
         bullet_v = bullet_v;
 
-        if (initial_vel_ != 30) {
-            std::cout << "[GetPitch]:The initial_vel_ is " << initial_vel_ 
-            <<" which is not supported " << std::endl;
-            return 0;
-        }
-
         target_distance = target_distance / 1000;
 
         double pitch;
-        double f_1 = pitch_1(target_h);
-        double f_3 = pitch_3(target_h);
-        double f_5 = pitch_5(target_h);
-        double f_7 = pitch_7(target_h);
+        double f_1 = pitch_1(target_h, bullet_v);
+        double f_3 = pitch_3(target_h, bullet_v);
+        double f_5 = pitch_5(target_h, bullet_v);
+        double f_7 = pitch_7(target_h, bullet_v);
 
         pitch = f_1 + (f_3 - f_1) / 2 * (target_distance - 1)
         + ((f_5 - f_3) / 2 - (f_3 - f_1) / 2) / 4 * (target_distance - 1) * (target_distance - 3)

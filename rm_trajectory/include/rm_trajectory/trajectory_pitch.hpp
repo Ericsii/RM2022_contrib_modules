@@ -11,10 +11,10 @@ public:
     double get_pitch(double target_distance, double target_h, double bullet_v);
 
 public:
-    double pitch_1(double target_h);
-    double pitch_3(double target_h);
-    double pitch_5(double target_h);
-    double pitch_7(double target_h);
+    double pitch_1(double target_h, double bullet_v);
+    double pitch_3(double target_h, double bullet_v);
+    double pitch_5(double target_h, double bullet_v);
+    double pitch_7(double target_h, double bullet_v);
 
 private:
     double initial_vel_;
