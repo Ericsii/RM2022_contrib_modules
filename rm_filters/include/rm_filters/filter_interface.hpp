@@ -9,8 +9,8 @@
 
 namespace rm_filters
 {
-	const u_int32_t Matrix_x = 6;
-	const u_int32_t Matrix_y = 3;
+	const uint32_t Matrix_x = 6;
+	const uint32_t Matrix_y = 3;
 	
 	class Filters
 	{
