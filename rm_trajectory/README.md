@@ -6,13 +6,17 @@
 
 ```c++
 //initial_vel为弹丸速度，分为18m/s,30m/s，传参直接写18/30即可
-auto test_pitch = std::make_shared<rm_trajectory::GetPitch>(initial_vel);
-//target_distance：云台枪口与目标水平距离，单位为m
+//air_drag为空气阻力系数，目前小弹丸写0.03即可
+//K为比例增益系数，目前写2即可
+//correction为偏差修正值，18m/s写2,30,m/s写2.5即可
+auto test_pitch = std::make_shared<rm_trajectory::GetPitch>(initial_vel, air_drag, K, correction);
+//target_distance：云台枪口与目标水平距离，单位为mm
 //target_h：云台与目标相对高度，单位mm，云台高度恒定为400mm/390mm，计算与目标相对高度后传入，单位mm
-pitch = test_pitch->get_pitch(target_distance, target_h, initial_vel);
+pitch = test_pitch->get_pitch(target_distance, target_h, initial_vel);		//纯测量
+pitch = test_pitch->get_pitch_model(target_distance, target_h, initial_vel);//纯模型
 ```
 
-### 模型解算
+### 模型解算(暂不支持使用)
 
 #### 使用方法
 
@@ -41,13 +45,58 @@ gaf_solver->set_initial_vel(15);
 gaf_solver->set_friction_coeff(0.2);
 ```
 
-# 射表原始数据
+---
 
-## 一、速度为$30m/s$时射表
+## 弹道模型建立
+
+### 17mm小弹丸
+
+#### 模型建立
+
+​		目前空气阻力系数为$0.03$
+
+​		17mm小弹丸发射角度接近水平，可以忽略其竖直方向空气阻力，并且已知空气阻力$f = kv^2$,水平方向上动力学模型：
+$$
+-kv_x^2 = m \frac{dv_x}{dt}
+$$
+​		以此为基础，建立弹丸飞行时间$T$的函数并进行牛顿迭代：
+$$
+T_{k+1} = T_k - \frac{f(T_k)}{df(T_k)}
+$$
+​		求解出$T$后，对$\theta$进行迭代，比较误差$e_k$进而判断是否结束迭代
+$$
+h_k = v_0sin\theta _kT - 4.9T^2
+$$
+
+$$
+e_k = h_r - target
+$$
+
+#### 模型效果
+
+​		模型与纯测试结果有基本固定的偏差，需要修正
+
+![image-20220410220651325](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410220651325.png)
+
+<p align = 'center'>未加修正对比图</p>
+
+​		添加固定修正后18m/s与30m/s模型与纯测试结果对比图
+
+![image-20220410220913951](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410220913951.png)
+
+<p align = 'center'>加修正30m/s对比图</p>
+
+![image-20220410221014049](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410221014049.png)
+
+<p align = 'center'>加修正18m/s对比图</p>
+
+## 射表原始数据
+
+### 一、速度为$30m/s$时射表
 
 ​		目前测试了$30m/s$速度下，距离分别为$1, 3, 5, 7$米的弹道数据，将每米的数据处理后，对未测试的数据进行差值处理，采用牛顿差值的方法。
 
-- ### 距离为1米射表
+- #### 距离为1米射表
 
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
@@ -79,7 +128,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $24$  |         $895$          |        $470$         |
 | $26$  |         $945$          |        $477$         |
 
-- ### 距离为3米射表
+- #### 距离为3米射表
 
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
@@ -108,7 +157,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $28$  |         $1878$         |        $400$         |
 | $30$  |         $1987$         |        $400$         |
 
-- ### 距离为5米射表
+- #### 距离为5米射表
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
 
@@ -137,7 +186,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $26$  |         $2542$         |        $400$         |
 | $28$  |         $2775$         |        $400$         |
 
-- ### 距离为7米射表
+- #### 距离为7米射表
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
 
@@ -161,11 +210,11 @@ gaf_solver->set_friction_coeff(0.2);
 | $22$  |        $2705.7$        |        $400$         |
 | $24$  |         $2977$         |        $400$         |
 
-## 二、速度为$18m/s$时射表
+### 二、速度为$18m/s$时射表
 
 ​		目前测试了$18m/s$速度下，距离分别为$1, 3, 5, 7$米的弹道数据，将每米的数据处理后，对未测试的数据进行差值处理，采用牛顿差值的方法。
 
-- ### 距离为1米射表
+- #### 距离为1米射表
 
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
@@ -196,7 +245,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $22$  |         $805$          |        $390$         |
 | $24$  |         $846$          |        $390$         |
 
-- ### 距离为3米射表
+- #### 距离为3米射表
 
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
@@ -221,7 +270,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $20$  |         $1260$         |        $390$         |
 | $22$  |         $1374$         |        $390$         |
 
-- ### 距离为5米射表
+- #### 距离为5米射表
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
 
@@ -242,7 +291,7 @@ gaf_solver->set_friction_coeff(0.2);
 | $18$  |         $1526$         |        $390$         |
 | $20$  |         $1696$         |        $390$         |
 
-- ### 距离为7米射表
+- #### 距离为7米射表
 
 每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
 
@@ -261,3 +310,6 @@ gaf_solver->set_friction_coeff(0.2);
 | $22$  |         $2129$         |        $390$         |
 | $24$  |         $2452$         |        $390$         |
 | $26$  |         $2632$         |        $390$         |
+
+---
+

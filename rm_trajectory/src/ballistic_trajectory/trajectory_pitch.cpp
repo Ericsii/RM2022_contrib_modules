@@ -7,13 +7,13 @@
  * @FilePath: /scu_rm_ros/contrib_modules/rm_trajectory/src/ballistic_trajectory/trajectory_pitch.cpp
  */
 #include "rm_trajectory/trajectory_pitch.hpp"
-#include <cmath>
+#include <math.h>
 #include <iostream>
 
 namespace rm_trajectory
 {
-    GetPitch::GetPitch(double initial_vel)
-    : initial_vel_(initial_vel) {}
+    GetPitch::GetPitch(double initial_vel, double air_drag, double K, double correction)
+    : initial_vel_(initial_vel), air_drag_(air_drag), K_(K), correction_(correction) {}
 
     double GetPitch::pitch_1(double target_h, double bullet_v) {
 
@@ -96,6 +96,51 @@ namespace rm_trajectory
 
         return pitch;
 
+    }
+
+    double GetPitch::get_pitch_model(double target_distance, double target_h, double bullet_v) {
+
+        bullet_v = bullet_v;
+
+        target_distance = target_distance / 1000;
+
+        double pitch = 0, T_k = 0, T_nk = 0, v = 0, h_k = 0, error = 0;
+        int while_times_in = 0, while_times_out = 0;
+
+        while (1) {
+            while (1) {
+                v = bullet_v * cos(pitch * DEC) / (air_drag_ * bullet_v * cos(pitch * DEC) * T_k + 1);
+                T_nk = T_k - (log(air_drag_ * bullet_v * cos(pitch * DEC) * T_k + 1) / air_drag_ - target_distance) / v;
+                if (abs(T_nk - T_k) < 0.01) {
+                    while_times_in = 0;
+                    break;
+                }
+                T_k = T_nk;
+                while_times_in += 1;
+
+                if (while_times_in > 20) {
+                    while_times_in = 0;
+                    break;
+                } 
+            }
+            T_k = abs(T_k);
+            h_k = bullet_v * sin(pitch * DEC) * T_k - 4.9 * T_k * T_k;
+            error = target_h / 1000 - h_k;
+
+            if (abs(error) < 0.01) {
+                while_times_out = 0;
+                break;
+            }
+
+            if (while_times_out > 20) {
+                while_times_out = 0;
+                break;
+            }
+            pitch = pitch + K_ * error;
+            while_times_out += 1;
+        }
+
+        return pitch + correction_;
     }
 
 }
