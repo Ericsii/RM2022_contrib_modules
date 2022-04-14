@@ -4,8 +4,9 @@
 namespace rm_trajectory
 {
 
-#define pi 3.14159265
-#define DEC pi / 180
+const double pi = 3.14159265;
+const double DEC = pi / 180;
+
 class GetPitch {
 public:
     explicit GetPitch(double initial_vel, double air_drag, double K, double correction);
