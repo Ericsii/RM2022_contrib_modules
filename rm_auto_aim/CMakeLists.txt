@@ -32,8 +32,6 @@ include_directories(include)
 # build shared lib
 add_library(${PROJECT_NAME} SHARED
   "src/detectors/armor_detector_svm.cpp"
-  "src/detectors/auto_aim_algo.cpp"
-  "src/auto_aim_node.cpp"
 )
 
 set(dependencies
@@ -56,11 +54,6 @@ ament_target_dependencies(${PROJECT_NAME} ${dependencies})
 ament_export_targets(${PROJECT_NAME} HAS_LIBRARY_TARGET)
 ament_export_dependencies(${dependencies} eigen3_cmake_module)
 
-add_executable(auto_aim_node "src/auto_aim_main.cpp")
-target_link_libraries(auto_aim_node ${PROJECT_NAME})
-
-rclcpp_components_register_nodes(${PROJECT_NAME} "rm_auto_aim::AutoAimNode")
-
 install(
   DIRECTORY include/
   DESTINATION include
@@ -72,10 +65,6 @@ install(TARGETS ${PROJECT_NAME}
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
-)
-
-install(TARGETS auto_aim_node
-  DESTINATION lib/${PROJECT_NAME}
 )
 
 # install launch resource config directory
