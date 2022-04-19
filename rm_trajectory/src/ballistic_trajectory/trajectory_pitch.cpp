@@ -1,11 +1,3 @@
-/*
- * @Author: your name
- * @Date: 2022-01-17 16:03:40
- * @LastEditTime: 2022-01-19 15:11:32
- * @LastEditors: Please set LastEditors
- * @Description: 打开koroFileHeader查看配置 进行设置: https://github.com/OBKoro1/koro1FileHeader/wiki/%E9%85%8D%E7%BD%AE
- * @FilePath: /scu_rm_ros/contrib_modules/rm_trajectory/src/ballistic_trajectory/trajectory_pitch.cpp
- */
 #include "rm_trajectory/trajectory_pitch.hpp"
 #include <math.h>
 #include <iostream>

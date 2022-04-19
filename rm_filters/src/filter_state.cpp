@@ -41,15 +41,17 @@ namespace rm_filters
 	*/
 	Eigen::MatrixXd MState::df_const_acc(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t)
 	{
+		(void) x_l_k;
+		(void) U;
         double delta_t = t;
-		Eigen::MatrixXd Matrix(Matrix_x, Matrix_x);
-		Matrix(0, 0) = 1, Matrix(0, 1) = 0, Matrix(0, 2) = 0, Matrix(0, 3) = delta_t, Matrix(0, 4) = 0, Matrix(0, 5) = 0;
-		Matrix(1, 0) = 0, Matrix(1, 1) = 1, Matrix(1, 2) = 0, Matrix(1, 3) = 0, Matrix(1, 4) = delta_t, Matrix(1, 5) = 0;
-		Matrix(2, 0) = 0, Matrix(2, 1) = 0, Matrix(2, 2) = 1, Matrix(2, 3) = 0, Matrix(2, 4) = 0, Matrix(2, 5) = delta_t;
-		Matrix(3, 0) = 0, Matrix(3, 1) = 0, Matrix(3, 2) = 0, Matrix(3, 3) = 1, Matrix(3, 4) = 0, Matrix(3, 5) = 0;
-		Matrix(4, 0) = 0, Matrix(4, 1) = 0, Matrix(4, 2) = 0, Matrix(4, 3) = 0, Matrix(4, 4) = 1, Matrix(4, 5) = 0;
-		Matrix(5, 0) = 0, Matrix(5, 1) = 0, Matrix(5, 2) = 0, Matrix(5, 3) = 0, Matrix(5, 4) = 0, Matrix(5, 5) = 1;
-		return Matrix;
+		Eigen::MatrixXd jacobian(Matrix_x, Matrix_x);
+		jacobian << 1, 0, 0, delta_t, 0, 0, \
+					0, 1, 0, 0, delta_t, 0, \
+					0, 0, 1, 0, 0, delta_t, \
+					0, 0, 0, 1, 0, 0, \
+					0, 0, 0, 0, 1, 0, \
+					0, 0, 0, 0, 0, 1; 
+		return jacobian;
 	}
 
 	/**

@@ -26,8 +26,6 @@ namespace rm_util
          * @return Eigen::Vector3d 欧拉角(RPY)
          */
         static Eigen::Vector3d quat2euler(Eigen::Quaterniond q);
-
-        static Eigen::Quaterniond euler2quat(Eigen::Vector3d eulerAngle);
     };
 } // namespace rm_util
 

@@ -9,7 +9,7 @@ const double DEC = pi / 180;
 
 class GetPitch {
 public:
-    explicit GetPitch(double initial_vel, double air_drag, double K, double correction);
+    explicit GetPitch(double initial_vel = 30.0, double air_drag = 0.03, double K = 2, double correction = 2.5);
 
     double get_pitch(double target_distance, double target_h, double bullet_v);
     double get_pitch_model(double target_distance, double target_h, double bullet_v);

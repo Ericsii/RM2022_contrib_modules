@@ -69,7 +69,7 @@ install(TARGETS ${PROJECT_NAME}
 
 # install launch resource config directory
 install(
-    DIRECTORY launch resource config
+    DIRECTORY launch resource
     DESTINATION share/${PROJECT_NAME}
 )
 

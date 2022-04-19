@@ -18,7 +18,6 @@ void ExKalman::init(Eigen::MatrixXd &z_k) {
 }
 
 Eigen::MatrixXd ExKalman::predict(Eigen::MatrixXd &U, double t) {
-
 	A = df_state(x_l_k, U, t);
 	W = se_df_state(x_l_k, U, t);
 	x_p_k = base_state(x_l_k, U, t);

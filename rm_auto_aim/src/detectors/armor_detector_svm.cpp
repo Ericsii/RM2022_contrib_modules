@@ -44,7 +44,7 @@ ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
     m_hog.signedGradient = false;
 
     // 构造投影目标点
-    float offset_x = 3, offset_y = 3;
+    float offset_x = 0, offset_y = 0;
     perspective_targets_[0] = cv::Point2f(offset_x, offset_y);
     perspective_targets_[1] = cv::Point2f(offset_x, 32 - offset_y);
     perspective_targets_[2] = cv::Point2f(32 - offset_x, 32 - offset_y);
@@ -136,7 +136,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
 {
     light.lightArea = r.size.area();
-    if (light.lightArea < 100 || light.lightArea > 2000)
+    if (light.lightArea < 100 || light.lightArea > 3000)
     {
         return 1; // 灯条区域大小不满足
     }
@@ -302,8 +302,6 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     hierarchy_.clear();
 #ifdef RM_DEBUG_MODE
     cv::waitKey(1);
-#else
-    cv::waitKey(1);
 #endif
 
     preImg(src, binImg_);
@@ -406,8 +404,8 @@ void ArmorDetectorSVM::lightHeightLong(LightDescriptor *light, float height)
 int ArmorDetectorSVM::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
 {
     // 调整数字识别区域
-    cv::Point2f dVecnx(10,0),dVecny(0,5);
     ArmorDescriptor armor_num(armor);
+    cv::Point2f dVecnx(armor.armorWidth*0.2,0),dVecny(0,armor.armorHeight*0.2);
     //装甲板四个点
     armor_num.points[0] = armor.lightL->led_top + dVecnx - dVecny;
     armor_num.points[1] = armor.lightL->led_bottom + dVecnx + dVecny;
@@ -415,12 +413,14 @@ int ArmorDetectorSVM::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
     armor_num.points[3] = armor.lightR->led_top - dVecnx - dVecny;
     auto t_M = cv::getPerspectiveTransform(armor_num.points, perspective_targets_); // 计算投影矩阵
     cv::warpPerspective(src, transformImg_, t_M, cv::Size(32, 32));             // 投影变换
-#ifdef RM_DEBUG_MODE
-    cv::imshow("armor_num", transformImg_);
-#endif
     cv::cvtColor(transformImg_, transformImg_, cv::COLOR_BGR2GRAY);             // 转换灰度图
     cv::threshold(transformImg_, transformImg_, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 二值化
     cv::resize(transformImg_,transformImg_,cv::Size(48,32));
+
+#ifdef RM_DEBUG_MODE
+    cv::imshow("armor_num", transformImg_);
+#endif
+
     std::vector<float> descriptors;
     m_hog.compute(transformImg_, descriptors, cv::Size(8, 8));
     armor.label = svm_->predict(descriptors);                                 // 预测图片
