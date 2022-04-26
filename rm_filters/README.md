@@ -21,9 +21,9 @@ rm_filters 卡尔曼滤波模块。
 
 | 矩阵名称 |         说明         |          大小           |
 | :------: | :------------------: | :---------------------: |
-|  $x_k$   |       后验估计       |    $Matrixx\times1$     |
-|  $x_l$   |  上一时刻的后验估计  |    $Matrixx\times1$     |
-|  $x_p$   |       前验估计       |    $Matrixx\times1$     |
+|  $x_k$   |       后验估计       |    $Matrixx\times 1$     |
+|  $x_l$   |  上一时刻的后验估计  |    $Matrixx\times 1$     |
+|  $x_p$   |       前验估计       |    $Matrixx\times 1$     |
 |   $B$    |  加速度状态转移矩阵  | $Matrixx\times Matrixy$ |
 |   $K$    |      卡尔曼增益      | $Matrixx\times Matrixy$ |
 |   $A$    |     状态转移矩阵     | $Matrixx\times Matrixx$ |
@@ -31,7 +31,7 @@ rm_filters 卡尔曼滤波模块。
 |   $Q$    |    系统协方差矩阵    | $Matrixx\times Matrixx$ |
 |   $P$    |     估计的协方差     | $Matrixx\times Matrixx$ |
 |   $R$    |    测量噪声协方差    | $Matrixy\times Matrixy$ |
-|   $U$    |      加速度矩阵      |    $Matrixy\times1$     |
+|   $u$    |     加速度控制向量   |    $Matrixy\times1$     |
 |  $z_k$   |       观测矩阵       |    $Matrixy\times1$     |
 
 - EKF计算额外用矩阵
@@ -46,53 +46,108 @@ rm_filters 卡尔曼滤波模块。
 * KF滤波器的使用
 
 ```c++
-Eigen::MatrixXd Q(rm_filters::Matrix_x, rm_filters::Matrix_x);
-Q = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//需要调参(本定义方式为全0矩阵)
+    using namespace rm_filters;
+    std::shared_ptr<FilterInterface> filter; // 抽象类指针
+    auto kf = std::make_shared<KalmanFilter>(6, 3);	// 构造滤波器
 
-Eigen::MatrixXd R(rm_filters::Matrix_y, rm_filters::Matrix_y);
-R = Eigen::MatrixXd::Zero(Matrix_y, Matrix_y);		//需要调参(本定义方式为全0矩阵)
+    Eigen::MatrixXd A(6, 6); // 状态转移矩阵
+    A << 1, 0, 0, 1, 0, 0,
+        0, 1, 0, 0, 1, 0,
+        0, 0, 1, 0, 0, 1,
+        0, 0, 0, 1, 0, 0,
+        0, 0, 0, 0, 1, 0,
+        0, 0, 0, 0, 0, 1;
 
-Filters *kf_filter = new Kalman(Q, R);
+    Eigen::MatrixXd B(6, 6); // 控制矩阵
+    B << 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0;
 
-Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
-z_k(0, 0) = position3d_world(0, 0), z_k(1, 0) = position3d_world(1, 0);
-z_k(2, 0) = position3d_world(2, 0);	//传入当前装甲板信息
+    Eigen::MatrixXd H(3, 6); // 测量矩阵
+    H << 1, 0, 0, 0, 0, 0,
+        0, 1, 0, 0, 0, 0,
+        0, 0, 1, 0, 0, 0;
 
-kf_filter->init(z_k);				//初始化滤波器
+    Eigen::MatrixXd Q(6, 6); // 过程协方差
+    Q << 0.01, 0, 0, 0, 0, 0,
+        0, 0.01, 0, 0, 0, 0,
+        0, 0, 0.01, 0, 0, 0,
+        0, 0, 0, 0.01, 0, 0,
+        0, 0, 0, 0, 0.01, 0,
+        0, 0, 0, 0, 0, 0.01;
 
-Eigen::MatrixXd U(rm_filters::Matrix_x, rm_filters::Matrix_x);
-U = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//暂时不需要调参
+    Eigen::MatrixXd R(3, 3); // 观测协方差
+    R << 0.01, 0, 0,
+        0, 0.01, 0,
+        0, 0, 0.01;
 
-kf_filter->predict(U, t);
-Eigen::MatrixXd x_k = kf_filter->update(z_k);		//更新，此时的x_k即为滤波后状态向量
+    kf->A = A;
+    kf->B = B;
+    kf->H = H;
+    kf->Q = Q;
+    kf->R = R;
+    filter = kf;
+    Eigen::VectorXd x_0 = Eigen::VectorXd::Zero(6); // 初始状态
+
+    filter->init(x_0); // 初始化(过程协方差矩阵置为0)
+
+    for(int i = 0; i < 100; ++i)
+    {
+        Eigen::VectorXd u(6);
+        Eigen::VectorXd z(3);
+        u << 0, 0, 0, 0, 0, 0;
+        z << i, i, i;
+        filter->predict(u); // 预测
+        auto x = filter->update(z); // 观测更新
+    }
 ```
 
 - EKF滤波器的使用
 
 ```c++
-Eigen::MatrixXd Q(rm_filters::Matrix_x, rm_filters::Matrix_x);
-Q = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//需要调参(本定义方式为全0矩阵)
+    using namespace rm_filters;
+    std::shared_ptr<FilterInterface> filter; // 抽象类指针
 
-Eigen::MatrixXd R(rm_filters::Matrix_y, rm_filters::Matrix_y);
-R = Eigen::MatrixXd::Zero(Matrix_y, Matrix_y);		//需要调参(本定义方式为全0矩阵)
+    Eigen::MatrixXd Q(6, 6); // 过程协方差
+    Q << 0.01, 0, 0, 0, 0, 0,
+        0, 0.01, 0, 0, 0, 0,
+        0, 0, 0.01, 0, 0, 0,
+        0, 0, 0, 0.01, 0, 0,
+        0, 0, 0, 0, 0.01, 0,
+        0, 0, 0, 0, 0, 0.01;
 
+    Eigen::MatrixXd R(3, 3); // 测量协方差
+    R << 0.01, 0, 0,
+        0, 0.01, 0,
+        0, 0, 0.01;
 
-Filters *ekf_filter = new ExKalman(Q, R, 
-						rm_filters::MState::const_acc, 
-                        rm_filters::MState::df_const_acc, 						 	                               rm_filters::MState::se_df_const_acc, 					                                 rm_filters::MState::const_acc_sensor, 
-                        rm_filters::MState::df_const_acc_sensor,
-						rm_filters::MState::se_df_const_acc_sensor);
+    auto ekf = std::make_shared<ExKalmanFilter>(6, 3, 0, Q, R); // 构造扩展卡尔曼滤波器
+	
+	// 使用恒定加速度运动模型
+    ekf->base_state = MState::const_acc;
+    ekf->df_state = MState::df_const_acc;
+    ekf->se_df_state = MState::se_df_const_acc;
+    ekf->base_sensor = MState::const_acc_sensor;
+    ekf->df_sensor = MState::df_const_acc_sensor;
+    ekf->se_df_sensor = MState::se_df_const_acc_sensor;
 
-Eigen::MatrixXd z_k(rm_filters::Matrix_y, 1);
-z_k(0, 0) = position3d_world(0, 0), z_k(1, 0) = position3d_world(1, 0);
-z_k(2, 0) = position3d_world(2, 0);	//传入当前装甲板信息
+    filter = ekf;
 
-ekf_filter->init(z_k);		//初始化滤波器
-Eigen::MatrixXd U(rm_filters::Matrix_x, rm_filters::Matrix_x);
-U = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);		//暂时不需要调参
+    Eigen::VectorXd x_0 = Eigen::VectorXd::Zero(6); // 初始状态
+    filter->init(x_0);
 
-ekf_filter->predict(U, t);	//预测
-Eigen::MatrixXd x_k = ekf_filter->update(z_k);	//更新，此时的x_k即为滤波后状态向量
+    for (int i = 0; i < 100; ++i)
+    {
+        Eigen::VectorXd u(6);
+        Eigen::VectorXd z(3);
+        u << 0, 0, 0, 0, 0, 0;
+        z << i, i, i;
+        filter->predict(u, 0.01); // 预测 u, delta_t
+        auto x = filter->update(z); // 更新
+    }
 ```
 
 ## 开发日志

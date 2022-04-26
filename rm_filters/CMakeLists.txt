@@ -17,9 +17,9 @@ find_package(Eigen3 REQUIRED)
 
 #create rm_trajectory lib
 add_library(${PROJECT_NAME} SHARED
-    src/ekf_filter.cpp
-    src/filter_state.cpp
-    src/kf_filter.cpp
+    "src/ekf_filter.cpp"
+    "src/filter_state.cpp"
+    "src/kf_filter.cpp"
 )
 set(dependencies
   rclcpp
@@ -51,6 +51,8 @@ ament_export_dependencies(${dependencies})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+
+  add_subdirectory(test)
 endif()
 
 ament_package()

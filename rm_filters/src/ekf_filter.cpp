@@ -2,29 +2,30 @@
 
 namespace rm_filters {
 
-void ExKalman::init(Eigen::MatrixXd &z_k) {
-	
-	Eigen::MatrixXd x_p_k(Matrix_x, 1);
-	x_p_k(0, 0) = z_k(0, 0); x_p_k(1, 0) = z_k(1, 0), x_p_k(2, 0) = z_k(2, 0);
-	x_p_k(3, 0) = 0; x_p_k(4, 0) = 0; x_p_k(5, 0) = 0;
-
-	this->x_p_k = x_p_k;
-	this->x_l_k = x_p_k;
-
-	Eigen::MatrixXd P(Matrix_x, Matrix_x);
-    P = Eigen::MatrixXd::Zero(Matrix_x, Matrix_x);
-
-	this->P = P;
+void ExKalmanFilter::init(Eigen::VectorXd &x_k) {
+	this->x_p_k = x_k;
+	this->x_l_k = x_k;
+	this->P = Eigen::MatrixXd::Zero(dim_x, dim_x);
 }
 
-Eigen::MatrixXd ExKalman::predict(Eigen::MatrixXd &U, double t) {
-	A = df_state(x_l_k, U, t);
-	W = se_df_state(x_l_k, U, t);
-	x_p_k = base_state(x_l_k, U, t);
+Eigen::VectorXd ExKalmanFilter::predict(Eigen::VectorXd &u, double t) {
+	A = df_state(x_l_k, u, t);
+	W = se_df_state(x_l_k, u, t);
+	x_p_k = base_state(x_l_k, u, t);
 	P = A * P * A.transpose() + W * Q * W.transpose();
 	return x_p_k;
 }
-Eigen::MatrixXd ExKalman::update(Eigen::MatrixXd &z_k) {
+
+Eigen::VectorXd ExKalmanFilter::predict(Eigen::VectorXd &u) {
+	double t = 0.01;
+	A = df_state(x_l_k, u, t);
+	W = se_df_state(x_l_k, u, t);
+	x_p_k = base_state(x_l_k, u, t);
+	P = A * P * A.transpose() + W * Q * W.transpose();
+	return x_p_k;
+}
+
+Eigen::VectorXd ExKalmanFilter::update(Eigen::VectorXd &z_k) {
 
 	H = df_sensor(x_p_k);
 	V = se_df_sensor(x_p_k);

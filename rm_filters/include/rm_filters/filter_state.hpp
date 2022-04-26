@@ -4,12 +4,11 @@
 
 namespace rm_filters
 {
-    const double pi = M_PI; 
-    const double DEC = pi / 180;
+	const double pi = M_PI;
+    const double DEC = M_PI / 180;
 
-	class MState 
+	namespace MState
 	{
-	public:
 		/**
 		* @brief 匀加速运动模型
 		*
@@ -17,7 +16,7 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd const_acc(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd const_acc(Eigen::VectorXd &x_l_k, Eigen::VectorXd &u, double t);
 		/**
 		* @brief 匀加速运动模型的状态矩阵
 		*
@@ -25,7 +24,7 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd df_const_acc(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd df_const_acc(Eigen::VectorXd &x_l_k, Eigen::VectorXd &u, double t);
 		/**
 		* @brief 匀加速运动模型的协方差变化矩阵
 		*
@@ -33,28 +32,28 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd se_df_const_acc(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd se_df_const_acc(Eigen::VectorXd &x_l_k, Eigen::VectorXd &u, double t);
 		/**
 		* @brief 传感器的运动模型
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat
 		*/
-		static Eigen::MatrixXd const_acc_sensor(Eigen::MatrixXd &x_p_k);
+		Eigen::MatrixXd const_acc_sensor(Eigen::VectorXd &x_p_k);
 		/**
 		* @brief 传感器的运动模型
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat
 		*/
-		static Eigen::MatrixXd df_const_acc_sensor(Eigen::MatrixXd &x_p_k);
+		Eigen::MatrixXd df_const_acc_sensor(Eigen::VectorXd &x_p_k);
 		/**
 		* @brief 传感器模型的协方差变化矩阵
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat
 		*/
-		static Eigen::MatrixXd se_df_const_acc_sensor(Eigen::MatrixXd &x_p_k);
+		Eigen::MatrixXd se_df_const_acc_sensor(Eigen::VectorXd &x_p_k);
 
 		/**
 		* @brief ctrv运动模型
@@ -63,7 +62,7 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd ctrv(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd ctrv(Eigen::VectorXd &x_l_k, Eigen::VectorXd &U, double t);
 		/**
 		* @brief ctrv运动模型的状态矩阵
 		*
@@ -71,7 +70,7 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd df_ctrv(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd df_ctrv(Eigen::VectorXd &x_l_k, Eigen::VectorXd &U, double t);
 		/**
 		* @brief ctrv运动模型的协方差变化矩阵
 		*
@@ -79,29 +78,29 @@ namespace rm_filters
 		* @param U 控制量
 		* @return Mat
 		*/
-		static Eigen::MatrixXd se_df_ctrv(Eigen::MatrixXd &x_l_k, Eigen::MatrixXd &U, double t);
+		Eigen::MatrixXd se_df_ctrv(Eigen::VectorXd &x_l_k, Eigen::VectorXd &U, double t);
 		/**
 		* @brief 传感器的ctrv运动模型
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat
 		*/
-		static Eigen::MatrixXd ctrv_sensor(Eigen::MatrixXd &x_p_k);
+		Eigen::MatrixXd ctrv_sensor(Eigen::VectorXd &x_p_k);
 		/**
 		* @brief 传感器模型的运动状态矩阵
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat
 		*/
-		static Eigen::MatrixXd df_ctrv_sensor(Eigen::MatrixXd &x_p_k);
+		Eigen::MatrixXd df_ctrv_sensor(Eigen::VectorXd &x_p_k);
 		/**
 		* @brief 传感器模型的协方差变化矩阵
 		*
 		* @param x_p_k 预测的状态
 		* @return Mat+
 		*/
-		static Eigen::MatrixXd se_df_ctrv_sensor(Eigen::MatrixXd &x_p_k);
-	};
+		Eigen::MatrixXd se_df_ctrv_sensor(Eigen::VectorXd &x_p_k);
+	}
 }
 
 #endif
