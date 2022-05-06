@@ -17,12 +17,12 @@ find_package(geometry_msgs REQUIRED)
 
 #create rm_trajectory lib
 add_library(${PROJECT_NAME} SHARED
-    src/ballistic_trajectory/trajectory_pitch.cpp
-    src/ballistic_trajectory/trajectory_tool.cpp
-    src/ballistic_trajectory/trajectory_gaf.cpp
-    src/ballistic_trajectory/trajectory_gimbal.cpp
-    src/ballistic_trajectory/trajectory_gravity.cpp
+    src/ballistic_trajectory/database_solver.cpp
+    src/ballistic_trajectory/gravity_solver.cpp
+    src/ballistic_trajectory/iterative_trajectory_tool.cpp
+    src/ballistic_trajectory/transform_tool.cpp
 )
+
 set(dependencies
   rclcpp
   Eigen3
@@ -53,8 +53,8 @@ ament_export_dependencies(${dependencies})
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
+  add_subdirectory(test)
 endif()
 
 ament_package() 
-
 

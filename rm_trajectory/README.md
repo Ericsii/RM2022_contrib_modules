@@ -2,47 +2,30 @@
 
 ### 单独Pitch补偿
 
-#### 使用方法
+#### 注意事项（必须调零，否则弹道会有固定偏差!!!）
 
-```c++
-//initial_vel为弹丸速度，分为18m/s,30m/s，传参直接写18/30即可
-//air_drag为空气阻力系数，目前小弹丸写0.03即可
-//K为比例增益系数，目前写2即可
-//correction为偏差修正值，18m/s写2,30,m/s写2.5即可
-auto test_pitch = std::make_shared<rm_trajectory::GetPitch>(initial_vel, air_drag, K, correction);
-//target_distance：云台枪口与目标水平距离，单位为mm
-//target_h：云台与目标相对高度，单位mm，云台高度恒定为400mm/390mm，计算与目标相对高度后传入，单位mm
-pitch = test_pitch->get_pitch(target_distance, target_h, initial_vel);		//纯测量
-pitch = test_pitch->get_pitch_model(target_distance, target_h, initial_vel);//纯模型
-```
-
-### 模型解算(暂不支持使用)
+​		陀螺仪可能会有零飘，即陀螺仪返回的0度有可能并非真实0度，需要人为寻找0度，可以通过激光位置判断，尽量测量激光距离大于3m，找到0度后需要在得到的pitch角度上加上目前的零飘
 
 #### 使用方法
 
+​		也可查看测试用test代码文件
+
 ```c++
-// 创建基于重力弹道模型的求解器，GravityProjectileSolver，参数代表子弹速度为25m/s
-auto graviry_solver = std::make_shared<rmoss_projectile_motion::GravityProjectileSolver>(25);
-
-// 创建考虑重力和空气阻力的求解器，GafProjectileSolver，参数代表子弹速度为25m/s，空气阻力系数为0.1
-auto gaf_solver = std::make_shared<rmoss_projectile_motion::GafProjectileSolver>(25, 0.1);
-
-// 创建gimbal_transform_tool，传入graviry_solver求解器
-auto projectile_tansformoss_tool =
-  std::make_shared<rmoss_projectile_motion::GimbalTransformTool>(graviry_solver);
-
-// 求解例子
-Eigen::Vector3d position(6, 2, 2);
-double pitch, yaw;
-projectile_tansformoss_tool->solve(position, pitch, yaw);
-
-// 更换求解器
-projectile_tansformoss_tool->set_projectile_solver(gaf_solver);
-
-// 更改求解器的参数
-graviry_solver->set_initial_vel(15);
-gaf_solver->set_initial_vel(15);
-gaf_solver->set_friction_coeff(0.2);
+//需要提前创建pitch,yaw
+double pitch = 0, yaw = 0;
+Eigen::Vector3d position;
+position(0) = 0; position(1) = 3000; position(2) = 1000;
+//创建基于模型的求解器，init_v为速度：30m/s或18m/s, coeff为空气阻力系数，目前小弹丸为0.03
+auto gravity_solver = std::make_shared<rm_trajectory::GravitySolver>(init_v, coeff);
+//创建基于实测数据的求解器,init_v为速度：30m/s或者18m/s
+auto database_solver = std::make_shared<rm_trajectory::DatabaseSolver>(init_v);
+//载入求解器（基于模型或基于数据）
+auto trajectory_transform_tool = std::make_shared<rm_trajectory::TransformTool>(solver);
+//position 击打点云台系坐标
+trajectory_transform_tool->solve(position, pitch, yaw);
+//获取pitch，yaw, initial_pitch为零飘角度
+pitch = trajectory_transform_tool->pitch_ + initial_pitch;
+yaw = trajectory_transform_tool->yaw_;
 ```
 
 ---
@@ -313,101 +296,3 @@ $$
 
 ---
 
-​		目前测试了$18m/s$速度下，距离分别为$1, 3, 5, 7$米的弹道数据，将每米的数据处理后，对未测试的数据进行差值处理，采用牛顿差值的方法。
-
-- ### 距离为1米射表
-
-
-每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
-
-| pitch | 射击点相对地面高度$mm$ | 枪口相对地面高度$mm$ |
-| :---: | :--------------------: | :------------------: |
-| $-20$ |         $522$          |        $1060$        |
-| $-18$ |         $582$          |        $1060$        |
-| $-16$ |         $650$          |        $1060$        |
-| $-14$ |         $690$          |        $1060$        |
-| $-12$ |         $720$          |        $1060$        |
-| $-10$ |         $770$          |        $1060$        |
-| $-8$  |         $816$          |        $1060$        |
-| $-6$  |         $867$          |        $1060$        |
-| $-4$  |         $900$          |        $1060$        |
-| $-2$  |         $935$          |        $1060$        |
-|  $0$  |         $307$          |        $390$         |
-|  $2$  |         $365$          |        $390$         |
-|  $4$  |         $408$          |        $390$         |
-|  $6$  |         $452$          |        $390$         |
-|  $8$  |         $500$          |        $390$         |
-| $10$  |         $541$          |        $390$         |
-| $12$  |         $600$          |        $390$         |
-| $14$  |         $622$          |        $390$         |
-| $16$  |         $660$          |        $390$         |
-| $18$  |         $708$          |        $390$         |
-| $20$  |         $764$          |        $390$         |
-| $22$  |         $805$          |        $390$         |
-| $24$  |         $846$          |        $390$         |
-
-- ### 距离为3米射表
-
-
-每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
-
-| pitch | 射击点相对地面高度$mm$ | 枪口相对地面高度$mm$ |
-| :---: | :--------------------: | :------------------: |
-| $-10$ |         $221$          |        $1060$        |
-| $-8$  |         $359$          |        $1060$        |
-| $-6$  |         $460$          |        $1060$        |
-| $-4$  |         $548$          |        $1060$        |
-| $-2$  |         $685$          |        $1060$        |
-|  $0$  |         $152$          |        $390$         |
-|  $2$  |         $257$          |        $390$         |
-|  $4$  |         $377$          |        $390$         |
-|  $6$  |         $475$          |        $390$         |
-|  $8$  |         $573$          |        $390$         |
-| $10$  |         $679$          |        $390$         |
-| $12$  |         $825$          |        $390$         |
-| $14$  |         $951$          |        $390$         |
-| $16$  |         $1025$         |        $390$         |
-| $18$  |         $1164$         |        $390$         |
-| $20$  |         $1260$         |        $390$         |
-| $22$  |         $1374$         |        $390$         |
-
-- ### 距离为5米射表
-
-每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
-
-| pitch | 射击点相对地面高度$mm$ | 枪口相对地面高度$mm$ |
-| :---: | :--------------------: | :------------------: |
-| $-6$  |         $186$          |        $1364$        |
-| $-4$  |         $377$          |        $1364$        |
-| $-2$  |         $581$          |        $1364$        |
-|  $0$  |         $813$          |        $1364$        |
-|  $2$  |         $939$          |        $1364$        |
-|  $4$  |         $1156$         |        $1364$        |
-|  $6$  |         $283$          |        $390$         |
-|  $8$  |         $533$          |        $390$         |
-| $10$  |         $675$          |        $390$         |
-| $12$  |         $842$          |        $390$         |
-| $14$  |         $1086$         |        $390$         |
-| $16$  |         $1296$         |        $390$         |
-| $18$  |         $1526$         |        $390$         |
-| $20$  |         $1696$         |        $390$         |
-
-- ### 距离为7米射表
-
-每个数据点由5个实际射击点求均值所得，本表格只显示均值后结果。
-
-| pitch | 射击点相对地面高度$mm$ | 枪口相对地面高度$mm$ |
-| :---: | :--------------------: | :------------------: |
-|  $2$  |         $299$          |        $1060$        |
-|  $4$  |        $563.8$         |        $1060$        |
-|  $6$  |         $169$          |        $390$         |
-|  $8$  |         $444$          |        $390$         |
-| $10$  |         $705$          |        $390$         |
-| $12$  |         $958$          |        $390$         |
-| $14$  |         $1172$         |        $390$         |
-| $16$  |         $1424$         |        $390$         |
-| $18$  |       $1671.25$        |        $390$         |
-| $20$  |         $1964$         |        $390$         |
-| $22$  |         $2129$         |        $390$         |
-| $24$  |         $2452$         |        $390$         |
-| $26$  |         $2632$         |        $390$         |
