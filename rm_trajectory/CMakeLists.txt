@@ -17,10 +17,11 @@ find_package(geometry_msgs REQUIRED)
 
 #create rm_trajectory lib
 add_library(${PROJECT_NAME} SHARED
-    src/ballistic_trajectory/database_solver.cpp
-    src/ballistic_trajectory/gravity_solver.cpp
-    src/ballistic_trajectory/iterative_trajectory_tool.cpp
-    src/ballistic_trajectory/transform_tool.cpp
+    "src/ballistic_trajectory/database_solver.cpp"
+    "src/ballistic_trajectory/gravity_solver.cpp"
+    "src/ballistic_trajectory/iterative_trajectory_tool.cpp"
+    "src/ballistic_trajectory/transform_tool.cpp"
+    "src/ballistic_trajectory/gravity_projectile_solver.cpp"
 )
 
 set(dependencies

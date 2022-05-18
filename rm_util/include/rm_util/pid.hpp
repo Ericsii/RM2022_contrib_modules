@@ -7,7 +7,6 @@ namespace rm_util
     {
     public:
         PID(float kp, float ki, float kd, float dt, float min_output = 0, float max_output = 0);
-        ~PID();
 
         void set_kp(float kp);
         void set_ki(float ki);
