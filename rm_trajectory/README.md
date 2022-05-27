@@ -14,18 +14,22 @@
 //需要提前创建pitch,yaw
 double pitch = 0, yaw = 0;
 Eigen::Vector3d position;
-position(0) = 0; position(1) = 3000; position(2) = 1000;
+//position为以云台为坐标原点的目标坐标点xyz，单位为cm
+position(0) = 0; position(1) = 300; position(2) = 100;
 //创建基于模型的求解器，init_v为速度：30m/s或18m/s, coeff为空气阻力系数，目前小弹丸为0.03
 auto gravity_solver = std::make_shared<rm_trajectory::GravitySolver>(init_v, coeff);
-//创建基于实测数据的求解器,init_v为速度：30m/s或者18m/s
+//创建基于模型的求解器,参数为射速
+auto gravity_nofriction_solver = 		       std::make_shared<rm_trajectory::GravityNofrictionSolver>(init_v);
+//创建基于数据的求解器,参数为射速
 auto database_solver = std::make_shared<rm_trajectory::DatabaseSolver>(init_v);
-//载入求解器（基于模型或基于数据）
-auto trajectory_transform_tool = std::make_shared<rm_trajectory::TransformTool>(solver);
-//position 击打点云台系坐标
+//载入求解器
+auto trajectory_transform_tool =
+	std::make_shared<rm_trajectory::TransformTool>(gravity_solver);
+//求解
 trajectory_transform_tool->solve(position, pitch, yaw);
-//获取pitch，yaw, initial_pitch为零飘角度
-pitch = trajectory_transform_tool->pitch_ + initial_pitch;
-yaw = trajectory_transform_tool->yaw_;
+//获取求解后pitch补偿角度，需要加上零飘角度值initial_pitch,与修正值correction
+//correction如果是数据求解器则不需要加
+pitch = pitch + initial_pitch + correction;
 ```
 
 ---
@@ -54,24 +58,6 @@ $$
 $$
 e_k = h_r - target
 $$
-
-#### 模型效果
-
-​		模型与纯测试结果有基本固定的偏差，需要修正
-
-![image-20220410220651325](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410220651325.png)
-
-<p align = 'center'>未加修正对比图</p>
-
-​		添加固定修正后18m/s与30m/s模型与纯测试结果对比图
-
-![image-20220410220913951](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410220913951.png)
-
-<p align = 'center'>加修正30m/s对比图</p>
-
-![image-20220410221014049](C:\Users\Samuel\AppData\Roaming\Typora\typora-user-images\image-20220410221014049.png)
-
-<p align = 'center'>加修正18m/s对比图</p>
 
 ## 射表原始数据
 
