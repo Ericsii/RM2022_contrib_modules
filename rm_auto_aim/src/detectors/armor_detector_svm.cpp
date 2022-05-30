@@ -104,7 +104,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
     }
 
     //目标颜色区域
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7));
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(10, 10));
     cv::dilate(imgTargetColor, imgTargetColor, element);
     cv::threshold(imgTargetColor, imgTargetColor, 72, 255, cv::THRESH_BINARY);
 #ifdef RM_DEBUG_MODE
@@ -113,7 +113,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 
     //亮度区域
     cv::GaussianBlur(imgBrightness, imgBrightness, cv::Size(3, 3), 1);
-    cv::threshold(imgBrightness, imgBrightness, 150, 255, cv::THRESH_BINARY);
+    cv::threshold(imgBrightness, imgBrightness, 140, 255, cv::THRESH_BINARY);
 #ifdef RM_DEBUG_MODE
     cv::imshow("bright_thre", imgBrightness);
 #endif
@@ -136,7 +136,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
 {
     light.lightArea = r.size.area();
-    if (light.lightArea < 100 || light.lightArea > 3000)
+    if (light.lightArea < 100 || light.lightArea > 4000)
     {
         return 1; // 灯条区域大小不满足
     }
@@ -237,6 +237,10 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
         {
             return 1; //平行太大误差，否定
         }
+        if(armor.lightL->lightAngle>90 && armor.lightR->lightAngle<90)
+            return 1;
+        if(armor.lightL->lightAngle<90 && armor.lightR->lightAngle>90)
+            return 1;
     }
     //条件2
     if (armor.armorRatioWH < 1 || armor.armorRatioWH > (22.5/6))
@@ -378,24 +382,36 @@ int ArmorDetectorSVM::process(cv::Mat &src)
         return 2; // 无装甲板
     }
 #ifdef RM_DEBUG_MODE
-    for (const auto &armor : armors_)
+    std::vector<ArmorDescriptor>::iterator armor = armors_.begin();
+    for (; armor != armors_.end();armor++)
     {
-        rm_util::draw_4points(debugImg, armor.points);
+        if(armor->label==0)
+        {
+            // std::vector<ArmorDescriptor>::iterator tmp = armor;
+            // armor = armors_.erase(tmp);
+            continue;
+        }
+        rm_util::draw_4points(debugImg, armor->points);
         cv::putText(debugImg,
-                    std::to_string(armor.label),
-                    armor.points[0],
+                    std::to_string(armor->label),
+                    armor->points[0],
                     cv::FONT_HERSHEY_SIMPLEX, 1,
                     target_color_red_ ? rm_util::red : rm_util::blue, 5);
+        cv::circle(debugImg, armor->centerPoint, 5, {0, 255, 0}, 3);
     }
     cv::imshow("result", debugImg);
 #endif
+    if (armors_.size() < 1)
+    {
+        return 2; // 无装甲板
+    }
     return 0;
 }
 
 void ArmorDetectorSVM::lightHeightLong(LightDescriptor *light, float height)
 {
     float coff; //补偿比例系数
-    coff = (float)((height - light->lightHeight) / height * 0.45);
+    coff = (float)((height - light->lightHeight) / height * 0.7);
     cv::Point2f dVec = coff * (light->led_bottom - light->led_top);
     light->led_bottom = light->led_bottom + dVec;
     light->led_top = light->led_top - dVec;

@@ -58,7 +58,7 @@ namespace rm_util
         cv::solvePnP(points3d, points2d,
                      camera_intrinsic_, camera_distortion_,
                      r, trans,
-                     false, cv::SOLVEPNP_EPNP);
+                     false, cv::SOLVEPNP_IPPE);
 
         position = cv::Point3f(trans);
         rotation = r.clone();

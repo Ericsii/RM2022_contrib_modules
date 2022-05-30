@@ -8,13 +8,11 @@ namespace rm_util
     {
         return q * point3d;
     }
-
     //pitch 0 | roll 1 | yaw 2
     Eigen::Vector3d CoordinateTranslation::quat2euler(Eigen::Quaterniond q)
     {
         // 按照 ZYX 顺序转换(即 rpy)
         // return q.matrix().eulerAngles(0, 1, 2);
-
         Eigen::Vector3d res;
         auto q_copy = q.coeffs(); // [x y z w]
         // pitch (x-axis rotation)
