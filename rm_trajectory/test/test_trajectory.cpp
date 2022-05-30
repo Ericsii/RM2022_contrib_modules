@@ -1,10 +1,11 @@
 #include "rm_trajectory/gravity_solver.hpp"
 #include "rm_trajectory/database_solver.hpp"
 #include "rm_trajectory/gravity_nofriction_solver.hpp"
+#include "gtest/gtest.h"
 
 #include <iostream>
 
-TEST(trajectory)
+TEST(trajectory, solver)
 {
 	double pitch = 0, yaw = 0;
 	double correction = 2.5, init_pitch = -3.2;
@@ -28,5 +29,5 @@ TEST(trajectory)
 	pitch = pitch + correction + init_pitch;
 	std::cout << pitch << std::endl;
 
-	return 0;
+	EXPECT_TRUE(true);
 }
