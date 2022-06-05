@@ -1,32 +1,34 @@
-#ifndef RM_AUTO_AIM__ARMOR_DETECTOR_SVM_HPP_
-#define RM_AUTO_AIM__ARMOR_DETECTOR_SVM_HPP_
+#ifndef RM_AUTO_AIM__ARMOR_DETECTOR_ONNX_HPP_
+#define RM_AUTO_AIM__ARMOR_DETECTOR_ONNX_HPP_
 
 #include <iostream>
 #include <string>
 
+#include "opencv2/dnn/dnn.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rm_auto_aim/armor_detector_interface.hpp"
 
 namespace rm_auto_aim
 {
-    class ArmorDetectorSVM : public ArmorDetector
+    class ArmorDetectorONNX : public ArmorDetector
     {
     public:
-        ArmorDetectorSVM() = delete;
-        ~ArmorDetectorSVM();
+        ArmorDetectorONNX() = delete;
+        ~ArmorDetectorONNX();
 
         /**
-         * @brief Construct a new Armor Detector SVM object
-         * 
+         * @brief Construct a new Armor Detector ONNX object
+         * Use ONNX model for armor label classify.
+         *
          * @param node rclcpp 节点
          * @param armor_is_red 目标装甲颜色
-         * @param xml_path 模型文件(XML)保存路径
+         * @param onnx_path 模型文件(XML)保存路径
          */
-        ArmorDetectorSVM(rclcpp::Node::SharedPtr node, bool armor_is_red = true, const std::string &xml_path = "");
+        ArmorDetectorONNX(rclcpp::Node::SharedPtr node, bool armor_is_red = true, const std::string &onnx_path = "");
 
         /**
          * @brief 处理一帧图像
-         * 
+         *
          * @param src 输入图像
          * @return int 0 正常; 1 灯条数目不够; 2 无装甲板
          */
@@ -34,22 +36,22 @@ namespace rm_auto_aim
 
         /**
          * @brief Get the Armor Vector object
-         * 
+         *
          * @return std::vector<ArmorDescriptor>& 保存的装甲板对象列表
          */
         std::vector<ArmorDescriptor> &getArmorVector();
 
         /**
          * @brief Set the target color object
-         * 
-         * @param is_red 
+         *
+         * @param is_red
          */
         void set_target_color(bool is_red);
 
     private:
         /**
          * @brief 预处理图片转换为二值图
-         * 
+         *
          * @param src 输入图像
          * @param dst 输出图像
          * @return int 0
@@ -59,7 +61,7 @@ namespace rm_auto_aim
         /**
          * @brief Get the Light Descriptor object
          * 灯条参数计算
-         * 
+         *
          * @param r 匹配到的选转矩形
          * @param light 输出的lightDescriptor
          * @return int 0 正常; 1 区域大小不满足; 2 宽高比不正确; 3 灯条倾斜度不符合
@@ -68,7 +70,7 @@ namespace rm_auto_aim
 
         /**
          * @brief 灯条匹配
-         * 
+         *
          * @param l1 灯条1
          * @param l2 灯条2
          * @param armor 返回的ArmorDescriptor
@@ -79,7 +81,7 @@ namespace rm_auto_aim
         /**
          * @brief 灯条高度补偿
          * 将两灯条高度尽量补偿一致
-         * 
+         *
          * @param light 灯条对象指针
          * @param height 补偿的目标高度
          */
@@ -87,7 +89,7 @@ namespace rm_auto_aim
 
         /**
          * @brief Get the Armor Number object
-         * 
+         *
          * @param src 输入 RGB 图像
          * @param armor 待测装甲板
          * @return int 0 正常; -1 未检测到装甲板
@@ -95,7 +97,7 @@ namespace rm_auto_aim
         int getArmorNumber(cv::Mat &src, ArmorDescriptor &armor); // 计算装甲编号
 
     private:
-        cv::Ptr<cv::ml::SVM> svm_; // SVM分类器
+        cv::dnn::Net model_; // ONNX 模型
 
         // 装甲板信息
         std::vector<LightDescriptor> lights_; // 灯条列表
@@ -106,13 +108,12 @@ namespace rm_auto_aim
         cv::Mat binImg_;                               // 二值图
         cv::Mat grayImg_;                              // 灰度图
         cv::Mat transformImg_;                         // 投影变换后图片
+        cv::Mat blobImg_;                              // 模型输入图像
+        cv::Mat output_;                               // 模形输出
         std::vector<std::vector<cv::Point>> contours_; // 图像轮廓
         std::vector<cv::Vec4i> hierarchy_;             // 轮廓结构信息
-
-        //参数
-        cv::HOGDescriptor m_hog;
         std::vector<int64_t> color_hsv;
     };
-} // namespace rm_auto_aim
+}
 
-#endif // ARMOR_DETECTOR_SVM_HPP_
+#endif // RM_AUTO_AIM__ARMOR_DETECTOR_ONNX_HPP_

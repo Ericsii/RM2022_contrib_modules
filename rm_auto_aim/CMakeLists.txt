@@ -32,6 +32,7 @@ include_directories(include)
 # build shared lib
 add_library(${PROJECT_NAME} SHARED
   "src/detectors/armor_detector_svm.cpp"
+  "src/detectors/armor_detector_onnx.cpp"
 )
 
 set(dependencies

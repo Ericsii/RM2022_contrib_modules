@@ -12,6 +12,7 @@ namespace rm_trajectory
 
 class TrajectoryInterface{
 public:
+	virtual void set_initial_vel(double vel) = 0;
 	virtual bool solve(double target_distance, double target_h, double & angle) = 0;
 	virtual std::string error_message() = 0;
 };

@@ -1,4 +1,4 @@
-#include "rm_auto_aim/detector/armor_detector_svm.hpp"
+#include "rm_auto_aim/detector/armor_detector_onnx.hpp"
 
 #include <sstream>
 
@@ -6,24 +6,26 @@
 
 using namespace rm_auto_aim;
 
-ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
-                                   bool armor_is_red,
-                                   const std::string &xml_path) : ArmorDetector(node, armor_is_red)
+ArmorDetectorONNX::ArmorDetectorONNX(rclcpp::Node::SharedPtr node,
+                                     bool armor_is_red,
+                                     const std::string &xml_path) : ArmorDetector(node, armor_is_red)
 {
-    node_->declare_parameter("xml_path", "");
-    std::string config_path = xml_path;
-    if (config_path == "")
+    node_->declare_parameter("onnx_xml_path", "");
+    std::string model_path = xml_path;
+    if (model_path == "")
     {
-        config_path = node_->get_parameter("xml_path").as_string();
+        model_path = node_->get_parameter("onnx_xml_path").as_string();
     }
-    if (config_path == "")
+    if (model_path == "")
     {
         throw std::invalid_argument("SVM xml path cannot be none!");
     }
 
     RCLCPP_INFO(
         node_->get_logger(),
-        "Loading SVM model from: %s", config_path.c_str());
+        "Loading ONNX model from: %s", model_path.c_str());
+
+    model_ = cv::dnn::readNetFromONNX(model_path);
 
     node_->declare_parameter("color_hsv",
                              std::vector<int64_t>(
@@ -36,30 +38,12 @@ ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
     std::vector<int64_t> color_hsv = node_->get_parameter("color_hsv").as_integer_array();
     this->color_hsv = color_hsv;
 
-    svm_ = cv::ml::SVM::load(config_path);
-    // HOG_SVM数字识别参数设置
-    std::map<int, int> m_label2id;
-    m_label2id = {{0, 0}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 11}, {7, 7}, {8, 8}};
-    m_hog.winSize = cv::Size(48, 32);
-    m_hog.blockSize = cv::Size(16, 16);
-    m_hog.blockStride = cv::Size(8, 8);
-    m_hog.cellSize = cv::Size(8, 8);
-    m_hog.nbins = 9;
-    m_hog.derivAperture = 1;
-    m_hog.winSigma = -1;
-    m_hog.histogramNormType = cv::HOGDescriptor::L2Hys;
-    m_hog.L2HysThreshold = 0.2;
-    m_hog.gammaCorrection = false;
-    m_hog.free_coef = -1.f;
-    m_hog.nlevels = cv::HOGDescriptor::DEFAULT_NLEVELS;
-    m_hog.signedGradient = false;
-
     // 构造投影目标点
-    float offset_x = 0, offset_y = 0;
+    float offset_x = -10, offset_y = 15;
     perspective_targets_[0] = cv::Point2f(offset_x, offset_y);
-    perspective_targets_[1] = cv::Point2f(offset_x, 32 - offset_y);
-    perspective_targets_[2] = cv::Point2f(32 - offset_x, 32 - offset_y);
-    perspective_targets_[3] = cv::Point2f(32 - offset_x, offset_y);
+    perspective_targets_[1] = cv::Point2f(offset_x, 64 - offset_y);
+    perspective_targets_[2] = cv::Point2f(64 - offset_x, 64 - offset_y);
+    perspective_targets_[3] = cv::Point2f(64 - offset_x, offset_y);
 
     std::string str;
     std::stringstream ss;
@@ -79,21 +63,20 @@ ArmorDetectorSVM::ArmorDetectorSVM(rclcpp::Node::SharedPtr node,
         target_color_red_ ? "red" : "blue");
 }
 
-ArmorDetectorSVM::~ArmorDetectorSVM()
+ArmorDetectorONNX::~ArmorDetectorONNX()
 {
-    svm_.release();
     armors_.~vector();
     lights_.~vector();
     contours_.~vector();
     hierarchy_.~vector();
 }
 
-std::vector<ArmorDescriptor> &ArmorDetectorSVM::getArmorVector()
+std::vector<ArmorDescriptor> &ArmorDetectorONNX::getArmorVector()
 {
     return armors_;
 }
 
-int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
+int ArmorDetectorONNX::preImg(cv::Mat &src, cv::Mat &dst)
 {
     cv::Mat bgr[3];
     cv::Mat img_b, img_g, img_r;
@@ -150,7 +133,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
     return 0;
 }
 
-int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
+int ArmorDetectorONNX::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
 {
     light.lightArea = r.size.area();
     if (light.lightArea < 100 || light.lightArea > 50000)
@@ -219,7 +202,7 @@ int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &lig
     return 0;
 }
 
-int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, ArmorDescriptor &armor)
+int ArmorDetectorONNX::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, ArmorDescriptor &armor)
 {
     if (l1.led_center.x > l2.led_center.x)
     {
@@ -254,13 +237,6 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
         {
             return 12; //平行太大误差，否定
         }
-        if(armor.lightL->lightAngle>90 && armor.lightR->lightAngle<90)
-            return 1;
-        if(armor.lightL->lightAngle<90 && armor.lightR->lightAngle>90)
-            return 1;
-    }
-    if (armor.parallelErr > 5)
-    {
         if (armor.lightL->lightAngle >= 90 && armor.lightR->lightAngle <= 90)
             return 13;
         if (armor.lightL->lightAngle <= 90 && armor.lightR->lightAngle >= 90)
@@ -299,7 +275,7 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
     //条件4
     if (abs(armor.horizonLineAngle) > 30)
     {
-        return int(abs(armor.horizonLineAngle)); //装甲板倾斜不符合，否定
+        return 4; //装甲板倾斜不符合，否定
     }
     //修补
     if (armor.lightL->lightHeight > armor.lightR->lightHeight)
@@ -318,11 +294,10 @@ int ArmorDetectorSVM::lightsMatch(LightDescriptor &l1, LightDescriptor &l2, Armo
     armor.points[1] = armor.lightL->led_bottom;
     armor.points[2] = armor.lightR->led_bottom;
     armor.points[3] = armor.lightR->led_top;
-
     return 0;
 }
 
-int ArmorDetectorSVM::process(cv::Mat &src)
+int ArmorDetectorONNX::process(cv::Mat &src)
 {
     // 清空上一次信息
     lights_.clear();
@@ -354,7 +329,6 @@ int ArmorDetectorSVM::process(cv::Mat &src)
         {
             r_rect = cv::fitEllipse(contour);
             ret = getLightDescriptor(r_rect, light);
-            // std::cout << "light: " << ret << std::endl;
             if (!ret)
             {
                 light.id = lightCnt++;
@@ -368,11 +342,6 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     for (const auto &light : lights_)
     {
         rm_util::draw_rotated_rect(debugImg, light.box);
-        cv::putText(debugImg,
-                    std::to_string(int(light.lightAngle)),
-                    light.led_bottom,
-                    cv::FONT_HERSHEY_SIMPLEX, 1,
-                    target_color_red_ ? rm_util::red : rm_util::red, 5);
     }
     RCLCPP_INFO(
         node_->get_logger(),
@@ -391,7 +360,6 @@ int ArmorDetectorSVM::process(cv::Mat &src)
         for (size_t j = i + 1; j < lights_.size(); ++j)
         {
             ret = lightsMatch(lights_[i], lights_[j], t_armor);
-            // std::cout << "lightsMatch: " << ret << std::endl;
             if (!ret)
             {
                 ret = getArmorNumber(src, t_armor);
@@ -417,12 +385,12 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     std::vector<ArmorDescriptor>::iterator armor = armors_.begin();
     for (; armor != armors_.end(); armor++)
     {
-        // if (armor->label == 0)
-        // {
-        // std::vector<ArmorDescriptor>::iterator tmp = armor;
-        // armor = armors_.erase(tmp);
-        // continue;
-        // }
+        if (armor->label == 0)
+        {
+            // std::vector<ArmorDescriptor>::iterator tmp = armor;
+            // armor = armors_.erase(tmp);
+            continue;
+        }
         rm_util::draw_4points(debugImg, armor->points);
         cv::putText(debugImg,
                     std::to_string(armor->label),
@@ -440,7 +408,7 @@ int ArmorDetectorSVM::process(cv::Mat &src)
     return 0;
 }
 
-void ArmorDetectorSVM::lightHeightLong(LightDescriptor *light, float height)
+void ArmorDetectorONNX::lightHeightLong(LightDescriptor *light, float height)
 {
     float coff; //补偿比例系数
     coff = (float)((height - light->lightHeight) / height * 0.7);
@@ -449,32 +417,47 @@ void ArmorDetectorSVM::lightHeightLong(LightDescriptor *light, float height)
     light->led_top = light->led_top - dVec;
 }
 
-int ArmorDetectorSVM::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
+int ArmorDetectorONNX::getArmorNumber(cv::Mat &src, ArmorDescriptor &armor)
 {
     // 调整数字识别区域
     ArmorDescriptor armor_num(armor);
-    cv::Point2f dVecnx(armor.armorWidth * 0.2, 0), dVecny(0, armor.armorHeight * 0.2);
+    cv::Point2f dVecnx(armor.armorWidth*0.2,0),dVecny(0,armor.armorHeight*0.05);
     //装甲板四个点
     armor_num.points[0] = armor.lightL->led_top + dVecnx - dVecny;
     armor_num.points[1] = armor.lightL->led_bottom + dVecnx + dVecny;
     armor_num.points[2] = armor.lightR->led_bottom - dVecnx + dVecny;
     armor_num.points[3] = armor.lightR->led_top - dVecnx - dVecny;
     auto t_M = cv::getPerspectiveTransform(armor_num.points, perspective_targets_);           // 计算投影矩阵
-    cv::warpPerspective(src, transformImg_, t_M, cv::Size(32, 32));                           // 投影变换
+    cv::warpPerspective(src, transformImg_, t_M, cv::Size(64, 64));                           // 投影变换
     cv::cvtColor(transformImg_, transformImg_, cv::COLOR_BGR2GRAY);                           // 转换灰度图
     cv::threshold(transformImg_, transformImg_, 0, 255, cv::THRESH_BINARY | cv::THRESH_OTSU); // 二值化
-    cv::resize(transformImg_, transformImg_, cv::Size(48, 32));
+    cv::GaussianBlur(transformImg_, transformImg_, cv::Size(3, 3), 3, 3);                     // 高斯滤波
 
 #ifdef RM_DEBUG_MODE
     cv::imshow("armor_num", transformImg_);
+
+    std::stringstream ss;
+    ss << "Model output: " << output_ << std::endl;
+
+    RCLCPP_INFO(node_->get_logger(), "%s", ss.str().c_str());
 #endif
 
-    std::vector<float> descriptors;
-    m_hog.compute(transformImg_, descriptors, cv::Size(8, 8));
-    armor.label = svm_->predict(descriptors); // 预测图片
+    blobImg_ = cv::dnn::blobFromImage(transformImg_, 1. / 255., cv::Size(28, 28));
+    model_.setInput(blobImg_);
+    output_ = model_.forward();
+
+    float confidence = output_.at<float>(0);
+    armor.label = 0;
+    for (int i = 1; i < output_.size[1]; i++)
+    {
+        if (output_.at<float>(i) > confidence)
+        {
+            confidence = output_.at<float>(i);
+            armor.label = i;
+        }
+    }
     if (armor.label >= 0 && armor.label <= 8)
     {
-        // 检测成功
         return 0;
     }
     return -1;
