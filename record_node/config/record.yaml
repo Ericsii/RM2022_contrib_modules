@@ -1,0 +1,7 @@
+record_node:
+  ros__parameters:
+    camera_name: 'virtual_camera'
+    best_effort_qos: true
+    fps: 30
+    video_dir: './record'
+    frame_per_file: 2000
