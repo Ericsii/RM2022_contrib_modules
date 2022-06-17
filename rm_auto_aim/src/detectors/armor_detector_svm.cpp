@@ -105,11 +105,12 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 
     if (target_color_red_)
     {
-        imgTargetColor_temp = img_r - 0.2 * img_g - 0.8 * img_b;
+        imgTargetColor_temp = img_r - color_hsv[14] * 0.1 * img_g - color_hsv[15] * 0.1 * img_b;
         cv::inRange(src, cv::Scalar(color_hsv[0], color_hsv[1], color_hsv[2]), cv::Scalar(color_hsv[3], color_hsv[4], color_hsv[5]), imgTargetColorRedHigh);
         cv::inRange(src, cv::Scalar(color_hsv[6], color_hsv[7], color_hsv[8]), cv::Scalar(color_hsv[9], color_hsv[10], color_hsv[11]), imgTargetColorRedLow);
         cv::add(imgTargetColorRedHigh, imgTargetColorRedLow, imgTargetColor);
         cv::bitwise_and(imgTargetColor, imgTargetColor_temp, imgTargetColor);
+        imgTargetColor = imgTargetColor_temp;
         imgBrightness = img_r;
     }
     else
@@ -121,8 +122,10 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
     }
 
     //目标颜色区域
-    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8));
-    cv::threshold(imgTargetColor, imgTargetColor, 140, 255, cv::THRESH_BINARY);
+    cv::Mat element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(color_hsv[16], color_hsv[16]));
+    cv::threshold(imgTargetColor, imgTargetColor, 100, 255, cv::THRESH_BINARY);
+    cv::erode(imgTargetColor, imgTargetColor, element);
+    element = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(color_hsv[17], color_hsv[17]));
     cv::dilate(imgTargetColor, imgTargetColor, element);
 #ifdef RM_DEBUG_MODE
     cv::imshow("target_color_dialte_thre", imgTargetColor);
@@ -130,7 +133,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 
     //亮度区域
     cv::GaussianBlur(imgBrightness, imgBrightness, cv::Size(3, 3), 1);
-    cv::threshold(imgBrightness, imgBrightness, 140, 255, cv::THRESH_BINARY);
+    cv::threshold(imgBrightness, imgBrightness, 100, 255, cv::THRESH_BINARY);
 #ifdef RM_DEBUG_MODE
     cv::imshow("bright_thre", imgBrightness);
 #endif
@@ -153,7 +156,7 @@ int ArmorDetectorSVM::preImg(cv::Mat &src, cv::Mat &dst)
 int ArmorDetectorSVM::getLightDescriptor(cv::RotatedRect r, LightDescriptor &light)
 {
     light.lightArea = r.size.area();
-    if (light.lightArea < 100 || light.lightArea > 50000)
+    if (light.lightArea < 50 || light.lightArea > 50000)
     {
         return 1; // 灯条区域大小不满足
     }
