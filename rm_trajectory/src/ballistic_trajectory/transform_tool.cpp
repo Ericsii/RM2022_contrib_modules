@@ -6,6 +6,7 @@ namespace rm_trajectory
 bool TransformTool::solve(double x, double y, double z, double &pitch, double &yaw) {
 	
 	x *= 10; y *= 10; z *= 10;
+	//识别后的目标单位为cm，这里转换为mm
 
 	double target_distance = sqrt((y * y) + (x * x));
 	double target_h = z;

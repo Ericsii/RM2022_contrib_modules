@@ -7,12 +7,13 @@ namespace rm_trajectory
 	GravityNofrictionSolver::GravityNofrictionSolver(double initial_vel)
 		: initial_vel_(initial_vel) {
 
+		//比例补偿迭代求解h，公式为简单抛物线：h = v * t - 0.5 * g * t^2
 		auto forward_motion = [&](double given_angle, double & h, double & t) {
 
-			h = initial_vel_ * sin(given_angle * DEC) * t - 0.5 * Gravity * t * t;
+			h = initial_vel_ * sin(given_angle * DEC) * t - 0.5 * Gravity * t * t;		
 
 		};
-
+		//无空气阻力的飞行时间：T = distance / v
 		auto forward_time = [&](double given_angle, double given_distance, double & t) {
             t = given_distance / (initial_vel * cos(given_angle * DEC));
 		};
