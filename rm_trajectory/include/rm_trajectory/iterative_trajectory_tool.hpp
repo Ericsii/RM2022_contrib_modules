@@ -23,10 +23,10 @@ public:
 	std::string error_message() { return error_message_; }
 
 private:
-	int max_iter_{ 50 };
-	bool database_flag_{false};
-	ForwardMotionFunc forward_motion_func_;
-	ForwardTimeFunc forward_time_func_;
+	int max_iter_{ 50 };			//最大迭代次数
+	bool database_flag_{false};		//数据查表标志位
+	ForwardMotionFunc forward_motion_func_;		//运动轨迹求解器
+	ForwardTimeFunc forward_time_func_;			//飞行时间求解器
 	std::string error_message_;
 };
 
